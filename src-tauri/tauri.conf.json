@@ -70,9 +70,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCMUMxOUJCQTM3NEVDOUYKUldTZjdIU2p1eGtjT3doTEM3Rlg0SE5uZ3h5TGtwMisyS1g3Yndic0ltK25HRnNYVVJ1cm1YRjQK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ4RDhENERCMEYzRjQ0OTkKUldTWlJEOFAyOVRZMkZNQmJwaHE3VWhIM3llRmxrNG1lRDF4VmhZZlZORGx6Y2hQRnkxNENkK2oK",
       "endpoints": [
-        "https://github.com/xiaoheQvQ/workbuddy-PET/releases/latest/download/latest.json"
+        "https://github.com/xiaoheQvQ/workbuudy-pet/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"
