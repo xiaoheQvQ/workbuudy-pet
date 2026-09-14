@@ -59,9 +59,9 @@ jobs:
           releaseBody: |
             自动构建发布，包含 Windows 安装包与更新签名文件。
             应用内「下载更新」会通过 latest.json 自动获取本版本。
-          # 首次试跑用 true：生成草稿 Release，确认产物与 latest.json 无误后
-          # 在 Releases 页面点 Publish。稳定后改回 false，实现推 tag 即自动发布。
-          releaseDraft: true
+          # 自动发布。若想改为「先人工审核再公开」，把这里改成 true，
+          # CI 会产出草稿 Release，需在 Releases 页面手动点 Publish。
+          releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           # 只产出 NSIS 安装包（tauri.conf.json 里还配了 dmg/app/deb/appimage）
