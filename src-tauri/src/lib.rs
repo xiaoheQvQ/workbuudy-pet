@@ -5,7 +5,7 @@
 //   预创建隐藏宠物窗口（保证 emit_to("pet") 监听始终存活）。
 // - 系统托盘：显示/隐藏宠物、打开管理窗口、始终置顶、退出。
 // - 窗口关闭行为：pet 窗与 main 窗均「最小化到托盘」而非退出应用。
-// - invoke_handler：注册全部桌面宠物命令（市场搜索/下载/本地管理/窗口控制/WorkBuddy 联动）。
+// - invoke_handler：注册全部桌面宠物命令（本地管理/窗口控制/WorkBuddy 联动）。
 //
 // 遵循 tauri-harness 后端规范：命令层薄入口，业务逻辑在 commands/desktop_pet.rs。
 
@@ -14,6 +14,7 @@ mod error;
 mod workbuddy;
 
 use commands::desktop_pet::{self, PET_WINDOW_LABEL};
+use commands::pet_market;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
@@ -130,20 +131,15 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            // codex-pets.net 市场
-            desktop_pet::search_codex_pets,
-            desktop_pet::get_codex_pet_detail,
-            desktop_pet::download_codex_pet,
             // 本地宠物管理
             desktop_pet::list_local_pets,
             desktop_pet::delete_local_pet,
             desktop_pet::get_pet_spritesheet_path,
-            desktop_pet::fetch_remote_spritesheet,
             desktop_pet::import_local_pet,
-            // 市场网络代理
-            desktop_pet::get_market_proxy_config,
-            desktop_pet::set_market_proxy,
-            desktop_pet::test_market_connection,
+            // 在线宠物市场（petdex.dev）
+            pet_market::fetch_market_pets,
+            pet_market::install_market_pet,
+            pet_market::market_pets_dir,
             // 宠物悬浮窗口控制
             desktop_pet::show_pet_window,
             desktop_pet::hide_pet_window,

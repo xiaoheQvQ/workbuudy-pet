@@ -1,16 +1,12 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createPetApp } from '@/modules/desktopPet/engine'
 import type { PetApp } from '@/modules/desktopPet/engine'
-import { fetchRemoteSpritesheetUrl } from '@/services/desktopPet'
 
 /**
  * 宠物实时预览（PixiJS）。
  *
- * 精灵图来源处理：
- *   - 本地已安装宠物：convertFileSrc 产出的 `http://asset.localhost/.../spritesheet.webp`，直接用。
- *   - 远程市场宠物（https://codex-pets.net）：前端因 CORS 无法直接加载，
- *     通过 Rust 后端 `fetch_remote_spritesheet` 下载到本地缓存（pets_cache），
- *     返回 convertFileSrc URL（带 .webp 扩展名），PixiJS Assets.load 可正常加载。
+ * 精灵图来源为本地已安装宠物：convertFileSrc 产出的
+ * `http://asset.localhost/.../spritesheet.webp`，可直接交给 PixiJS Assets.load。
  *
  * 行为：
  *   - spritesheetSrc / petId 变化 → switchPet（不重建引擎）。
@@ -21,7 +17,7 @@ import { fetchRemoteSpritesheetUrl } from '@/services/desktopPet'
 export interface PetPreviewProps {
   /** 宠物 id（用于后端缓存目录命名）。 */
   petId: string
-  /** 精灵图源（本地 convertFileSrc 或远程 https）。 */
+  /** 精灵图源（本地 convertFileSrc URL）。 */
   spritesheetSrc: string
   /** 宠物缩放（相对 192x208 单元），默认 0.9。 */
   scale?: number
@@ -35,45 +31,15 @@ export function usePetPreview(props: PetPreviewProps) {
   const loadError = ref<string | null>(null)
   const isLoading = ref(true)
 
-  /**
-   * 解析精灵图源为可加载的本地 URL。
-   *
-   * - 本地（asset 协议 / tauri:// / blob:）→ 直接用。
-   *   注意：macOS 上 convertFileSrc 产出 `asset://localhost/...`（无点号），
-   *   不能用 `includes('asset.localhost')` 判断，要用 `asset://` 协议头。
-   * - 远程 https → 调 Rust 后端下载到本地缓存，返回 convertFileSrc URL。
-   */
-  async function resolveSrc(src: string): Promise<string> {
-    // 本地资源 → 直接用。
-    if (
-      src.startsWith('blob:') ||
-      src.startsWith('asset://') ||
-      src.startsWith('http://asset.localhost') ||
-      src.startsWith('https://asset.localhost') ||
-      src.startsWith('tauri://')
-    ) {
-      return src
-    }
-
-    // 远程 https → Rust 后端代理下载（绕过 CORS）。
-    try {
-      return await fetchRemoteSpritesheetUrl(props.petId, src)
-    } catch (e) {
-      console.error('[PetPreview] backend fetch remote spritesheet failed:', e)
-      throw e
-    }
-  }
-
   async function bootApp(): Promise<void> {
     if (!hostRef.value) return
     await destroyApp()
     isLoading.value = true
     loadError.value = null
     try {
-      const resolvedSrc = await resolveSrc(props.spritesheetSrc)
       petApp.value = await createPetApp(hostRef.value, {
         initialPetId: props.petId,
-        initialSpritesheetSrc: resolvedSrc,
+        initialSpritesheetSrc: props.spritesheetSrc,
         config: { scale: props.scale ?? 0.9 },
         preview: true
       })
@@ -108,8 +74,7 @@ export function usePetPreview(props: PetPreviewProps) {
       if (id === petApp.value.currentPetId) return
       isLoading.value = true
       try {
-        const resolvedSrc = await resolveSrc(src)
-        await petApp.value.switchPet(id, resolvedSrc)
+        await petApp.value.switchPet(id, src)
         isLoading.value = false
       } catch (error) {
         console.error('[PetPreview] switch failed:', error)

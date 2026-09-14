@@ -1,54 +1,44 @@
 <script setup lang="ts">
 /**
- * PetManager 管理窗口主视图：宠物选择/查看/市场。
+ * PetManager 管理窗口主视图：宠物选择/查看/本地导入/在线市场。
  * 按 taste-skills redesign 规范设计。
  */
 import { usePetManager } from './index'
 import PetThumb from './PetThumb/PetThumb.vue'
 import PetDetailModal from './PetDetailModal/PetDetailModal.vue'
+import MarketPanel from './MarketPanel/MarketPanel.vue'
 
 const {
   t,
   petSettings,
   desktopPetStore,
-  sortOptions,
-  kindOptions,
   languageOptions,
   movementModeOptions,
-  proxyModeOptions,
   scaleMin,
   scaleMax,
   scaleStep,
-  activeSubTab,
-    settingsOpen,
-    updateInfo,
-    installing,
-    handleDownloadUpdate,
+  settingsOpen,
+  activeTab,
+  petMarketStore,
+  updateInfo,
+  installing,
+  handleDownloadUpdate,
   detailVisible,
   detailPet,
   workbuddyLinked,
   workbuddyDbPath,
   workbuddyDataDirInput,
   workbuddyDataDirSaving,
-  proxyMode,
-  proxyCustomUrl,
-  proxySaving,
-  connectionTesting,
   handleToggleEnabled,
   openLocalDetail,
-  openRemoteDetail,
-  handleDetailDownload,
   handleDetailUse,
+  openMarketDetail,
+  handleInstallPet,
   handleDeletePet,
-  handleSearchSubmit,
-  handleFilterChange,
-  handleQuickDownload,
   handleLanguageChange,
   handleScaleChange,
   handleMovementModeChange,
   handleSetWorkBuddyDataDir,
-  handleSetProxy,
-  handleTestConnection,
   handleImportPet,
   toLocalAssetUrl
 } = usePetManager()
@@ -212,79 +202,38 @@ const {
             >{{ t('ui.stats.dataDirApply') }}</n-button>
           </div>
         </div>
-
-        <!-- 网络代理（codex-pets.net 市场需要翻墙，默认 Clash 7890） -->
-        <div class="pm-setting pm-setting--wide">
-          <div class="pm-setting__head">
-            <span class="pm-setting__label">{{ t('ui.proxy.title') }}</span>
-            <!-- 连接状态指示 -->
-            <span
-              v-if="desktopPetStore.marketConnection"
-              :class="desktopPetStore.marketConnection.ok
-                ? 'pm-setting__value pm-setting__value--ok'
-                : 'pm-setting__value pm-setting__value--warn'"
-            >
-              {{ desktopPetStore.marketConnection.ok
-                ? '✓ ' + t('ui.proxy.connected', { ms: desktopPetStore.marketConnection.latencyMs ?? '?' })
-                : '✗ ' + t('ui.proxy.failed', { error: desktopPetStore.marketConnection.error ?? '' }) }}
-            </span>
-          </div>
-          <div class="pm-datadir-input">
-            <n-select
-              v-model:value="proxyMode"
-              :options="proxyModeOptions"
-              size="small"
-              class="pm-setting__control--proxy-mode"
-            />
-            <n-input
-              v-if="proxyMode === 'custom'"
-              v-model:value="proxyCustomUrl"
-              :placeholder="t('ui.proxy.customPlaceholder')"
-              size="small"
-              clearable
-            />
-            <n-button
-              size="small"
-              :loading="proxySaving"
-              @click="handleSetProxy"
-            >{{ t('ui.proxy.apply') }}</n-button>
-            <n-button
-              size="small"
-              :loading="connectionTesting"
-              quaternary
-              @click="handleTestConnection"
-            >{{ t('ui.proxy.test') }}</n-button>
-          </div>
-        </div>
       </div>
     </section>
 
-    <!-- tab 导航 -->
-    <nav class="pm-tabs">
-      <button
-        type="button"
-        class="pm-tab"
-        :class="{ 'pm-tab--active': activeSubTab === 'local' }"
-        @click="activeSubTab = 'local'"
-      >
-        我的宠物
-        <span class="pm-tab__count">{{ desktopPetStore.localPets.length }}</span>
-      </button>
-      <button
-        type="button"
-        class="pm-tab"
-        :class="{ 'pm-tab--active': activeSubTab === 'market' }"
-        @click="activeSubTab = 'market'"
-      >
-        宠物市场
-      </button>
-    </nav>
+    <!-- 列表区：我的宠物 / 在线市场 -->
+    <section class="pm-panel">
+      <!-- 标签页切换 -->
+      <div class="pm-tabs">
+        <button
+          type="button"
+          class="pm-tab"
+          :class="{ 'pm-tab--active': activeTab === 'local' }"
+          @click="activeTab = 'local'"
+        >
+          {{ t('ui.pet.myPets') }}
+          <span class="pm-tab__count">{{ desktopPetStore.localPets.length }}</span>
+        </button>
+        <button
+          type="button"
+          class="pm-tab"
+          :class="{ 'pm-tab--active': activeTab === 'market' }"
+          @click="activeTab = 'market'"
+        >
+          {{ t('ui.market.title') }}
+          <span
+            v-if="petMarketStore.loaded"
+            class="pm-tab__count"
+          >{{ petMarketStore.total }}</span>
+        </button>
+      </div>
 
-    <!-- 我的宠物 -->
-    <section
-      v-if="activeSubTab === 'local'"
-      class="pm-panel"
-    >
+      <!-- 我的宠物 -->
+      <template v-if="activeTab === 'local'">
       <!-- 列表头部：导入按钮 -->
       <div class="pm-list__header">
         <span class="pm-list__count">{{ desktopPetStore.localPets.length }} 只宠物</span>
@@ -302,7 +251,7 @@ const {
           v-if="desktopPetStore.localPets.length === 0"
           class="pm-empty"
         >
-          还没有安装任何宠物，去市场看看吧
+          还没有导入任何宠物，点击右上角「导入宠物」添加一只吧
         </div>
         <div
           v-else
@@ -326,6 +275,10 @@ const {
                 class="pm-card__tag"
               >内置</span>
               <span
+                v-else-if="pet.source === 'downloaded'"
+                class="pm-card__tag pm-card__tag--done"
+              >{{ t('ui.pet.tag.market') }}</span>
+              <span
                 v-else-if="pet.source === 'uploaded'"
                 class="pm-card__tag pm-card__tag--done"
               >已上传</span>
@@ -344,150 +297,14 @@ const {
           </article>
         </div>
       </div>
-    </section>
+      </template>
 
-    <!-- 宠物市场 -->
-    <section
-      v-else
-      class="pm-panel"
-    >
-      <!-- 市场连接失败警告条 -->
-      <div
-        v-if="desktopPetStore.marketConnection && !desktopPetStore.marketConnection.ok"
-        class="pm-market-error"
-        role="alert"
-      >
-        ⚠️ {{ t('ui.proxy.marketError') }}{{ desktopPetStore.marketConnection.error ? '：' + desktopPetStore.marketConnection.error : '' }}
-      </div>
-
-      <!-- 筛选栏（固定不滚） -->
-      <div class="pm-filters">
-        <n-input
-          v-model:value="desktopPetStore.remoteQuery"
-          placeholder="搜索宠物名称…"
-          class="pm-filters__search"
-          clearable
-          @keydown.enter="handleSearchSubmit"
-        />
-        <n-select
-          v-model:value="desktopPetStore.remoteKind"
-          :options="kindOptions"
-          class="pm-filters__select"
-          @update:value="handleFilterChange"
-        />
-        <n-select
-          v-model:value="desktopPetStore.remoteSort"
-          :options="sortOptions"
-          class="pm-filters__select"
-          @update:value="handleFilterChange"
-        />
-        <n-button
-          type="primary"
-          :loading="desktopPetStore.remoteLoading"
-          @click="handleSearchSubmit"
-        >
-          搜索
-        </n-button>
-      </div>
-
-      <!-- 列表滚动区 -->
-      <div class="pm-list">
-        <div
-          v-if="desktopPetStore.remoteLoading && desktopPetStore.remotePets.length === 0"
-          class="pm-empty"
-        >
-          加载中…
-        </div>
-        <div
-          v-else-if="desktopPetStore.remotePets.length === 0"
-          class="pm-empty"
-        >
-          未找到宠物，换个关键词试试
-        </div>
-        <div
-          v-else
-          class="pm-grid"
-        >
-          <article
-            v-for="pet in desktopPetStore.remotePets"
-            :key="pet.id"
-            class="pm-card"
-            @click="openRemoteDetail(pet)"
-          >
-            <div class="pm-card__thumb">
-              <PetThumb
-                v-if="pet.spritesheetUrl"
-                :src="pet.spritesheetUrl"
-                :row="0"
-                :col="0"
-              />
-              <span
-                v-if="desktopPetStore.isInstalled(pet.id)"
-                class="pm-card__tag pm-card__tag--done"
-              >已安装</span>
-            </div>
-            <div class="pm-card__body">
-              <h3 class="pm-card__name">{{ pet.displayName }}</h3>
-              <div class="pm-card__meta">
-                <span
-                  v-if="pet.kind"
-                  class="pm-card__kind"
-                >{{ pet.kind }}</span>
-                <span
-                  v-if="pet.downloadCount != null"
-                  class="pm-card__dl"
-                >↓ {{ pet.downloadCount }}</span>
-              </div>
-            </div>
-            <div class="pm-card__action">
-              <n-button
-                v-if="desktopPetStore.isInstalled(pet.id)"
-                size="tiny"
-                quaternary
-                disabled
-              >
-                已安装
-              </n-button>
-              <n-button
-                v-else
-                size="tiny"
-                type="primary"
-                ghost
-                :loading="desktopPetStore.isDownloading(pet.id)"
-                @click.stop="handleQuickDownload(pet.id)"
-              >
-                下载
-              </n-button>
-            </div>
-          </article>
-        </div>
-      </div>
-
-      <!-- 分页（固定吸底） -->
-      <nav
-        v-if="desktopPetStore.remoteTotalPages > 1"
-        class="pm-pager"
-      >
-        <n-button
-          size="small"
-          quaternary
-          :disabled="desktopPetStore.remotePage <= 1 || desktopPetStore.remoteLoading"
-          @click="desktopPetStore.goToRemotePage(desktopPetStore.remotePage - 1)"
-        >
-          上一页
-        </n-button>
-        <span class="pm-pager__info">
-          {{ desktopPetStore.remotePage }} / {{ desktopPetStore.remoteTotalPages }}
-        </span>
-        <n-button
-          size="small"
-          quaternary
-          :disabled="desktopPetStore.remotePage >= desktopPetStore.remoteTotalPages || desktopPetStore.remoteLoading"
-          @click="desktopPetStore.goToRemotePage(desktopPetStore.remotePage + 1)"
-        >
-          下一页
-        </n-button>
-      </nav>
+      <!-- 在线市场（petdex.dev） -->
+      <MarketPanel
+        v-else
+        @open="openMarketDetail"
+        @install="handleInstallPet"
+      />
     </section>
 
     <!-- 详情弹窗 -->
@@ -496,10 +313,13 @@ const {
       :pet="detailPet"
       :is-active="detailPet ? detailPet.id === desktopPetStore.activePetId : false"
       @update:visible="detailVisible = $event"
-      @download="handleDetailDownload"
       @use="handleDetailUse"
       @delete="handleDeletePet"
+      @install="handleInstallPet"
     />
   </main>
 </template>
 <style scoped src="./index.css"></style>
+<!-- 卡片/网格/空态样式为本地列表与在线市场共用；scoped 样式命不中子组件内部元素，
+     故 MarketPanel 也自行引入同一份（见 cards.css 头部说明）。 -->
+<style scoped src="./cards.css"></style>

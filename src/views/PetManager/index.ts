@@ -1,12 +1,6 @@
 /**
  * usePetManager — 宠物管理窗口主视图的 composable。
  *
- * 相比原 DesktopPetSettings：
- *   - settingsStore → petSettingsStore
- *   - EaButton/EaInput/EaSelect → Naive UI（在 index.vue 里直接用）
- *   - i18n → 硬编码中文（独立应用，文案量小）
- *   - 新增首次启动选择流逻辑
- *
  * 集成代理扩展（WorkBuddy 联动）：
  *   - 接通 vue-i18n：选项 / label / 提示统一走 `t()`，文案 key 定义于 src/locales。
  *   - locale 切换：watch petSettings.locale → 同步 useI18n 的 `locale.value`（与全局同步）。
@@ -20,17 +14,16 @@ import { invoke } from '@tauri-apps/api/core'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { usePetSettingsStore } from '@/stores/petSettings'
 import { useDesktopPetStore } from '@/stores/desktopPet'
+import { usePetMarketStore } from '@/stores/petMarket'
 import { toLocalAssetUrl } from '@/services/desktopPet'
 import { useAppUpdate } from '@/composables/useAppUpdate'
 import type { AppLocale } from '@/locales'
 import { supportedLocales } from '@/locales'
-import type { CodexPetKind, CodexPetSort, LocalPetInfo, ProxyMode } from '@/types/desktopPet'
+import type { LocalPetInfo } from '@/types/desktopPet'
+import type { MarketPet } from '@/types/petMarket'
 import type { DetailPet } from './PetDetailModal/usePetDetailModal'
 
-/** 子 tab：我的宠物 / 宠物市场。 */
-type SubTab = 'local' | 'market'
-
-/** 排序选项。 */
+/** 下拉选项。 */
 interface Option {
   value: string
   label: string
@@ -41,13 +34,15 @@ export function usePetManager() {
   const { t, locale } = useI18n()
   const petSettings = usePetSettingsStore()
   const desktopPetStore = useDesktopPetStore()
+  const petMarketStore = usePetMarketStore()
   const { updateInfo, checkForAppUpdate, downloadAndInstallUpdate, installing } = useAppUpdate()
-
-  const activeSubTab = ref<SubTab>('local')
 
   // --- 设置区折叠状态 -----------------------------------------------------
   // 默认收起：设置区常驻会挤压宠物列表垂直空间，收起后宠物列表获得最大高度。
   const settingsOpen = ref(false)
+
+  // --- 标签页（我的宠物 / 在线市场）----------------------------------------
+  const activeTab = ref<'local' | 'market'>('local')
 
   // --- 详情弹窗状态 ------------------------------------------------------
   const detailVisible = ref(false)
@@ -76,33 +71,7 @@ export function usePetManager() {
   /** 设置数据目录中。 */
   const workbuddyDataDirSaving = ref(false)
 
-  // --- 市场网络代理 --------------------------------------------------------
-  /** 当前代理模式（auto / direct / custom）。 */
-  const proxyMode = ref<ProxyMode>('auto')
-  /** 自定义代理 URL（仅 custom 模式使用）。 */
-  const proxyCustomUrl = ref('')
-  /** 代理保存中。 */
-  const proxySaving = ref(false)
-  /** 连接测试中。 */
-  const connectionTesting = ref(false)
-
   // --- 选项 --------------------------------------------------------------
-
-  const sortOptions = computed<Option[]>(() => [
-    { value: 'new', label: t('ui.pet.sort.new') },
-    { value: 'popular', label: t('ui.pet.sort.popular') },
-    { value: 'views', label: t('ui.pet.sort.views') },
-    { value: 'discussed', label: t('ui.pet.sort.discussed') },
-    { value: 'random', label: t('ui.pet.sort.random') }
-  ])
-
-  const kindOptions = computed<Option[]>(() => [
-    { value: '', label: t('ui.pet.kind.allCategory') },
-    { value: 'person', label: t('ui.pet.kind.person') },
-    { value: 'animal', label: t('ui.pet.kind.animal') },
-    { value: 'creature', label: t('ui.pet.kind.creature') },
-    { value: 'object', label: t('ui.pet.kind.object') }
-  ])
 
   /** 语言下拉选项（label 本地化）。 */
   const languageOptions = computed<Option[]>(() => [
@@ -114,13 +83,6 @@ export function usePetManager() {
   const movementModeOptions = computed<Option[]>(() => [
     { value: 'free', label: t('ui.pet.movementFree') },
     { value: 'fixed', label: t('ui.pet.movementFixed') }
-  ])
-
-  /** 代理模式下拉选项：自动（Clash 默认）/ 直连 / 自定义。 */
-  const proxyModeOptions = computed<Option[]>(() => [
-    { value: 'auto', label: t('ui.proxy.mode.auto') },
-    { value: 'direct', label: t('ui.proxy.mode.direct') },
-    { value: 'custom', label: t('ui.proxy.mode.custom') }
   ])
 
   /** 缩放滑块范围（与 PetView scale/100 一致）。 */
@@ -190,60 +152,47 @@ export function usePetManager() {
     detailVisible.value = true
   }
 
-  /** 远程市场宠物 → 详情。 */
-  function openRemoteDetail(pet: {
-    id: string
-    displayName: string
-    description?: string | null
-    kind?: string | null
-    tags: string[]
-    spritesheetUrl?: string | null
-    downloadCount?: number | null
-    viewCount?: number | null
-  }): void {
-    const src = pet.spritesheetUrl ?? ''
-    detailPet.value = {
-      id: pet.id,
-      displayName: pet.displayName,
-      description: pet.description,
-      kind: pet.kind,
-      tags: pet.tags,
-      spritesheetSrc: src,
-      installed: desktopPetStore.isInstalled(pet.id),
-      source: 'remote',
-      downloadCount: pet.downloadCount,
-      viewCount: pet.viewCount
-    }
-    detailVisible.value = true
-  }
-
-  /** 详情弹窗：下载（并设为激活）。 */
-  async function handleDetailDownload(petId: string): Promise<void> {
-    try {
-      const info = await desktopPetStore.downloadPet(petId, true)
-      message.success(`已下载「${info.displayName}」并设为当前宠物`, {
-        duration: 3500
-      })
-    } catch (e) {
-      message.error(`下载失败：${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
-
   /** 详情弹窗：设为当前宠物。 */
   async function handleDetailUse(petId: string): Promise<void> {
     await desktopPetStore.setActivePet(petId)
   }
 
-  // --- handlers：市场搜索 ------------------------------------------------
-
-  /** 远程搜索输入（回车触发）。 */
-  async function handleSearchSubmit(): Promise<void> {
-    await desktopPetStore.refreshRemote()
+  /** 市场宠物 → 详情（remote spritesheetSrc；已安装则与本地状态一致）。 */
+  function openMarketDetail(pet: MarketPet): void {
+    const installed = desktopPetStore.localPets.some((item) => item.id === pet.slug)
+    detailPet.value = {
+      id: pet.slug,
+      displayName: pet.displayName,
+      // 官网搜索接口带描述与标签，未安装也能完整预览。
+      description: pet.description,
+      kind: pet.kind,
+      tags: pet.tags,
+      spritesheetSrc: pet.spritesheetUrl,
+      installed,
+      // 已安装的走本地来源标签，未安装的标为在线来源（决定按钮显示「安装」还是「设为当前」）。
+      source: installed ? 'downloaded' : 'market',
+      submittedBy: pet.submittedBy
+    }
+    detailVisible.value = true
   }
 
-  /** 切换排序/分类后立即刷新。 */
-  async function handleFilterChange(): Promise<void> {
-    await desktopPetStore.refreshRemote()
+  /**
+   * 安装市场宠物（市场卡片与详情弹窗共用入口）。
+   *
+   * 成功后 store 会自动刷新本地列表并设为当前宠物；若详情弹窗正展示该宠物，
+   * 同步把其状态改为「已安装」，让「安装到本地」按钮立即变成「设为当前」。
+   */
+  async function handleInstallPet(slug: string): Promise<void> {
+    try {
+      const info = await petMarketStore.install(slug)
+      message.success(t('ui.market.installSuccess', { name: info.displayName }))
+      if (detailPet.value?.id === slug) {
+        detailPet.value = { ...detailPet.value, installed: true, source: 'downloaded' }
+      }
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e)
+      message.error(t('ui.market.installFailed', { error: detail }), { duration: 6000 })
+    }
   }
 
   // --- handlers：语言 / 缩放 / WorkBuddy 联动 -------------------------------
@@ -339,46 +288,7 @@ export function usePetManager() {
     }
   }
 
-  // --- handlers：市场代理 / 连接测试 / 导入 / 删除 ----------------------
-
-  /** 应用代理配置：保存到后端后立即测试连接。 */
-  async function handleSetProxy(): Promise<void> {
-    if (proxySaving.value) return
-    proxySaving.value = true
-    try {
-      await desktopPetStore.saveProxy(proxyMode.value, proxyCustomUrl.value.trim())
-      // 保存后立即测试连接 + 刷新市场列表。
-      await handleTestConnection()
-      await desktopPetStore.refreshRemote()
-    } catch (e) {
-      message.error(String(e instanceof Error ? e.message : e))
-    } finally {
-      proxySaving.value = false
-    }
-  }
-
-  /** 测试市场连通性，更新 store.marketConnection。 */
-  async function handleTestConnection(): Promise<void> {
-    if (connectionTesting.value) return
-    connectionTesting.value = true
-    try {
-      await desktopPetStore.checkMarketConnection()
-      const conn = desktopPetStore.marketConnection
-      if (conn && conn.ok) {
-        message.success(
-          t('ui.proxy.connected', { ms: conn.latencyMs ?? '?' }),
-          { duration: 3000 }
-        )
-      } else if (conn && !conn.ok) {
-        message.warning(
-          t('ui.proxy.failed', { error: conn.error ?? '' }),
-          { duration: 5000 }
-        )
-      }
-    } finally {
-      connectionTesting.value = false
-    }
-  }
+  // --- handlers：导入 / 删除 ---------------------------------------------
 
   /** 打开文件选择器导入本地宠物（PNG / WebP）。 */
   async function handleImportPet(): Promise<void> {
@@ -420,18 +330,6 @@ export function usePetManager() {
     }
   }
 
-  /** 卡片快捷下载。 */
-  async function handleQuickDownload(petId: string): Promise<void> {
-    try {
-      const info = await desktopPetStore.downloadPet(petId, true)
-      message.success(`已下载「${info.displayName}」并设为当前宠物`, {
-        duration: 3500
-      })
-    } catch (e) {
-      message.error(`下载失败：${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
-
   /**
    * 下载并安装新版本（应用内更新）。
    * updater 插件校验签名后下载安装，完成后自动 relaunch 重启应用。
@@ -470,13 +368,6 @@ export function usePetManager() {
     }
 
     await desktopPetStore.loadLocalPets()
-    await desktopPetStore.refreshRemote()
-
-    // 加载代理配置 + 测试市场连通性（供代理设置区显示状态）。
-    await desktopPetStore.loadProxyConfig()
-    proxyMode.value = desktopPetStore.proxyConfig.mode
-    proxyCustomUrl.value = desktopPetStore.proxyConfig.customUrl
-    void handleTestConnection()
 
     // 静默检测应用更新（失败不影响主流程；有新版本时顶部显示下载按钮）。
     void checkForAppUpdate()
@@ -499,17 +390,17 @@ export function usePetManager() {
     petSettings,
     desktopPetStore,
     // options
-    sortOptions,
-    kindOptions,
     languageOptions,
     movementModeOptions,
     scaleMin: SCALE_MIN,
     scaleMax: SCALE_MAX,
     scaleStep: SCALE_STEP,
-    // sub-tab
-    activeSubTab,
     // settings collapse
     settingsOpen,
+    // tabs
+    activeTab,
+    // market
+    petMarketStore,
     // app update
     updateInfo,
     installing,
@@ -525,30 +416,19 @@ export function usePetManager() {
     workbuddyDataDirInput,
     workbuddyDataDirMissing,
     workbuddyDataDirSaving,
-    // proxy
-    proxyModeOptions,
-    proxyMode,
-    proxyCustomUrl,
-    proxySaving,
-    connectionTesting,
     // handlers
     handleToggleEnabled,
     handleToggleAlwaysOnTop,
     handleSelectPet,
     openLocalDetail,
-    openRemoteDetail,
-    handleDetailDownload,
     handleDetailUse,
-    handleSearchSubmit,
-    handleFilterChange,
-    handleQuickDownload,
+    openMarketDetail,
+    handleInstallPet,
     handleLanguageChange,
     handleScaleChange,
     handleMovementModeChange,
     handleToggleWorkBuddyLink,
     handleSetWorkBuddyDataDir,
-    handleSetProxy,
-    handleTestConnection,
     handleImportPet,
     handleDeletePet,
     // utils
@@ -556,4 +436,4 @@ export function usePetManager() {
   }
 }
 
-export type { CodexPetKind, CodexPetSort, LocalPetInfo }
+export type { LocalPetInfo }

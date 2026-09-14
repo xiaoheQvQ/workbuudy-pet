@@ -8,7 +8,7 @@
  * key 分组：
  *   - notif.*  ：桌面宠物通知气泡文案（占位符 {tool}/{file}/{error}/{line}/{name}）
  *   - ui.app.* ：管理窗口标题/副标题
- *   - ui.pet.* ：宠物管理（列表/市场/卡片/空态/分页/分类/排序/标签）
+ *   - ui.pet.* ：宠物管理（列表/卡片/空态/导入/标签）
  *   - ui.detail.*：详情弹窗
  *   - ui.workbuddy.*：WorkBuddy 联动开关
  *   - ui.settings.*：设置项（语言等）
@@ -58,8 +58,6 @@ export default {
   'ui.pet.movementFree': '自由漫游',
   'ui.pet.movementFixed': '固定位置',
   'ui.pet.myPets': '我的宠物',
-  'ui.pet.market': '宠物市场',
-  'ui.pet.search': '搜索宠物…',
 
   // 状态条 / 引导
   'ui.pet.status.state': '状态',
@@ -70,46 +68,21 @@ export default {
   'ui.pet.guide.disabled': '宠物已关闭，打开右上角开关即可在桌面显示。先选一只喜欢的吧。',
 
   // 空态 / 加载
-  'ui.pet.noLocal': '还没有宠物，去市场下载一只吧',
-  'ui.pet.noLocalAlt': '还没有安装任何宠物，去市场看看吧',
   'ui.pet.loading': '加载中…',
-  'ui.pet.noMarketResult': '没有找到匹配的宠物',
-  'ui.pet.noMarketResultAlt': '未找到宠物，换个关键词试试',
 
   // 卡片标签
   'ui.pet.tag.builtin': '内置',
   'ui.pet.tag.inUse': '使用中',
-  'ui.pet.tag.installed': '已安装',
+  'ui.pet.tag.market': '市场',
 
   // 操作按钮
   'ui.pet.use': '使用',
   'ui.pet.delete': '删除',
-  'ui.pet.download': '下载',
   'ui.pet.detail': '详情',
   'ui.pet.actions': '动作',
   'ui.pet.preview': '预览',
-  'ui.pet.searchBtn': '搜索',
-  'ui.pet.searchPlaceholder': '搜索宠物名称…',
-  'ui.pet.prevPage': '上一页',
-  'ui.pet.nextPage': '下一页',
-
-  // 分类（kind）
-  'ui.pet.kind.all': '全部',
-  'ui.pet.kind.allCategory': '全部分类',
-  'ui.pet.kind.person': '人物',
-  'ui.pet.kind.animal': '动物',
-  'ui.pet.kind.creature': '生物',
-  'ui.pet.kind.object': '物品',
-
-  // 排序（sort）
-  'ui.pet.sort.new': '最新',
-  'ui.pet.sort.popular': '热门',
-  'ui.pet.sort.views': '浏览最多',
-  'ui.pet.sort.discussed': '评论最多',
-  'ui.pet.sort.random': '随机',
 
   // --- 详情弹窗（ui.detail.*）-------------------------------------------
-  'ui.detail.downloadAndUse': '下载并使用',
   'ui.detail.setActive': '设为当前',
   'ui.detail.close': '关闭',
   'ui.detail.animTitle': '动画状态（点击预览）',
@@ -138,18 +111,6 @@ export default {
   'ui.stats.calls': '次调用',
   'ui.stats.noData': '今天还没有 AI 活动哦~',
 
-  // --- 市场网络代理（ui.proxy.*）-----------------------------------------
-  'ui.proxy.title': '网络代理',
-  'ui.proxy.mode.auto': '自动（Clash 默认）',
-  'ui.proxy.mode.direct': '直连（不使用代理）',
-  'ui.proxy.mode.custom': '自定义',
-  'ui.proxy.customPlaceholder': 'http://127.0.0.1:7890',
-  'ui.proxy.apply': '应用',
-  'ui.proxy.test': '测试连接',
-  'ui.proxy.connected': '连接正常（{ms}ms）',
-  'ui.proxy.failed': '连接失败：{error}',
-  'ui.proxy.marketError': '无法连接宠物市场，请检查网络代理设置（建议使用 Clash 默认端口 7890）',
-
   // --- 本地导入（ui.pet.import*）-----------------------------------------
   'ui.pet.import': '导入宠物',
   'ui.pet.importSuccess': '已导入「{name}」并设为当前宠物',
@@ -175,14 +136,28 @@ export default {
   'ui.common.confirm': '确认',
   'ui.common.cancel': '取消',
 
-  // --- 操作反馈 toast（ui.msg.*）----------------------------------------
-  'ui.msg.downloaded': '已下载「{name}」并设为当前宠物',
-  'ui.msg.downloadFailed': '下载失败：{error}',
-
   // --- 应用更新（ui.update.*）------------------------------------------
   'ui.update.available': '发现新版本 {version}',
   'ui.update.download': '下载更新',
   'ui.update.installing': '正在安装…',
   'ui.update.downloadFailed': '更新失败：{error}',
-  'ui.update.tooltip': '点击下载并安装 {version}（安装后自动重启）'
+  'ui.update.tooltip': '点击下载并安装 {version}（安装后自动重启）',
+
+  // --- 在线市场（ui.market.*）--------------------------------------------
+  'ui.market.title': '在线市场',
+  'ui.market.searchPlaceholder': '搜索宠物（名称 / 描述 / 标签）',
+  'ui.market.allKinds': '全部分类',
+  'ui.market.sort.curated': '精选',
+  'ui.market.sort.recent': '最新',
+  'ui.market.sort.popular': '最多喜欢',
+  'ui.market.sort.installed': '最多安装',
+  'ui.market.sort.alpha': '字母序',
+  'ui.market.refresh': '刷新',
+  'ui.market.retry': '重试',
+  'ui.market.empty': '没有找到匹配的宠物，换个关键词试试',
+  'ui.market.error': '加载失败：{error}',
+  'ui.market.install': '安装',
+  'ui.market.installed': '已安装',
+  'ui.market.installSuccess': '已安装「{name}」并设为当前宠物',
+  'ui.market.installFailed': '安装失败：{error}'
 } as const

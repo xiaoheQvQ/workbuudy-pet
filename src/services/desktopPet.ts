@@ -4,39 +4,9 @@
 
 import { invoke } from '@tauri-apps/api/core'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import type {
-  CodexPetListResponse,
-  CodexPetSearchParams,
-  CodexPetSummary,
-  LocalPetInfo,
-  MarketConnectionResult,
-  ProxyConfig
-} from '@/types/desktopPet'
+import type { LocalPetInfo } from '@/types/desktopPet'
 
-/** 搜索 codex-pets.net 宠物市场。 */
-export async function searchCodexPets(
-  params: CodexPetSearchParams = {}
-): Promise<CodexPetListResponse> {
-  return invoke<CodexPetListResponse>('search_codex_pets', {
-    q: params.q ?? null,
-    kind: params.kind || null,
-    sort: params.sort ?? null,
-    page: params.page ?? 1,
-    pageSize: params.pageSize ?? 30
-  })
-}
-
-/** 获取单只宠物的详情（含完整精灵图 URL 等）。 */
-export async function getCodexPetDetail(petId: string): Promise<CodexPetSummary> {
-  return invoke<CodexPetSummary>('get_codex_pet_detail', { petId })
-}
-
-/** 下载某只宠物到本地持久化目录，返回落地信息。 */
-export async function downloadCodexPet(petId: string): Promise<LocalPetInfo> {
-  return invoke<LocalPetInfo>('download_codex_pet', { petId })
-}
-
-/** 列出本地所有已安装的宠物（内置 + 下载）。 */
+/** 列出本地所有已安装的宠物（内置 + 导入）。 */
 export async function listLocalPets(): Promise<LocalPetInfo[]> {
   return invoke<LocalPetInfo[]>('list_local_pets')
 }
@@ -82,17 +52,6 @@ export async function setPetAlwaysOnTop(alwaysOnTop: boolean): Promise<void> {
   await invoke('set_pet_always_on_top', { alwaysOnTop })
 }
 
-/**
- * 通过 Rust 后端下载远程精灵图到本地缓存，返回可加载的 convertFileSrc URL。
- *
- * 用于宠物市场预览：前端因 CORS 无法直接 fetch codex-pets.net 的精灵图，
- * 通过后端代理下载到本地缓存目录（pets_cache），返回本地文件 URL（带 .webp 扩展名）。
- */
-export async function fetchRemoteSpritesheetUrl(petId: string, url: string): Promise<string> {
-  const path = await invoke<string>('fetch_remote_spritesheet', { petId, url })
-  return convertFileSrc(path)
-}
-
 // --- 本地导入 -------------------------------------------------------------
 
 /** 从本地文件导入宠物精灵图（PNG / WebP）。返回落地信息。 */
@@ -104,24 +63,4 @@ export async function importLocalPet(
     filePath,
     displayName: displayName ?? null
   })
-}
-
-// --- 市场网络代理 ----------------------------------------------------------
-
-/** 读取当前市场代理配置。 */
-export async function getMarketProxyConfig(): Promise<ProxyConfig> {
-  return invoke<ProxyConfig>('get_market_proxy_config')
-}
-
-/** 设置市场代理配置并持久化。 */
-export async function setMarketProxy(
-  mode: string,
-  customUrl: string
-): Promise<ProxyConfig> {
-  return invoke<ProxyConfig>('set_market_proxy', { mode, customUrl })
-}
-
-/** 测试与 codex-pets.net 的网络连通性。 */
-export async function testMarketConnection(): Promise<MarketConnectionResult> {
-  return invoke<MarketConnectionResult>('test_market_connection')
 }

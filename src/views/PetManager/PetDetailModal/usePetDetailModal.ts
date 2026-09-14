@@ -3,30 +3,29 @@ import { computed, ref, watch } from 'vue'
 import { CODEX_ATLAS_ROWS_DEF } from '@/modules/desktopPet/engine'
 
 /**
- * 宠物详情弹窗：大图实时预览 + 9 个动画状态切换 + 下载/使用操作。
+ * 宠物详情弹窗：大图实时预览 + 动画状态切换 + 使用/删除操作。
  *
- * pet.spritesheetSrc 既可能是本地 convertFileSrc（已安装宠物）也可能是远程 https（市场宠物），
- * PetPreview 两种都支持。点击某行动画按钮 → 设置 activeAction → 大图实时播放该动画。
+ * pet.spritesheetSrc 为本地 convertFileSrc URL，PetPreview 直接加载。
+ * 点击某行动画按钮 → 设置 activeAction → 大图实时播放该动画。
  */
 
-/** 详情用统一宠物结构（兼容本地 LocalPetInfo 与远程 CodexPetSummary）。 */
+/** 详情用统一宠物结构。 */
 export interface DetailPet {
   id: string
   displayName: string
   description?: string | null
   kind?: string | null
   tags: string[]
-  /** 精灵图源（本地 convertFileSrc 或远程 https）。 */
+  /** 精灵图源（本地 convertFileSrc）。 */
   spritesheetSrc: string
   /** 是否已本地安装。 */
   installed: boolean
-  /** 来源标签：'builtin' | 'downloaded' | 'remote'。 */
+  /** 来源标签：'builtin' | 'downloaded' | 'uploaded' | 'imported' | 'market'。 */
   source: string
-  /** 远程市场的下载数等可选元信息。 */
-  downloadCount?: number | null
-  viewCount?: number | null
   /** 安装时间（本地宠物可选）。 */
   installedAt?: string | null
+  /** 投稿者昵称（仅在线市场来源有值）。 */
+  submittedBy?: string | null
 }
 
 export interface PetDetailModalProps {
@@ -38,36 +37,34 @@ export interface PetDetailModalProps {
 
 export interface PetDetailModalEmits {
   (event: 'update:visible', value: boolean): void
-  (event: 'download', petId: string): void
   (event: 'use', petId: string): void
   (event: 'delete', petId: string): void
+  /** 安装未安装的宠物（在线市场来源）。 */
+  (event: 'install', petId: string): void
 }
 
 export function useDetailModal(
   props: PetDetailModalProps,
-  emit: (event: 'update:visible' | 'download' | 'use' | 'delete', ...args: unknown[]) => void
+  emit: (
+    event: 'update:visible' | 'use' | 'delete' | 'install',
+    ...args: unknown[]
+  ) => void
 ) {
   // 当前正在播放的动画行 id（空 = 自动漫游）。
   const activeAction = ref<string>('')
 
-  // 9 个动画行（idle/running-right/.../review）。
+  // 动画行（idle/running-right/.../review）。
   const animRows = CODEX_ATLAS_ROWS_DEF
 
   const canUse = computed(() => props.pet?.installed && !props.isActive)
-  const canDownload = computed(() => !props.pet?.installed)
   const canDelete = computed(
     () => props.pet?.installed && props.pet.source !== 'builtin'
   )
+  /** 在线市场宠物且尚未安装：显示「安装」而非「使用中」。 */
+  const canInstall = computed(() => !!props.pet && !props.pet.installed)
 
   function close(): void {
     emit('update:visible', false)
-  }
-
-  function handleDownload(): void {
-    if (props.pet) {
-      emit('download', props.pet.id)
-    }
-    close()
   }
 
   function handleUse(): void {
@@ -82,6 +79,13 @@ export function useDetailModal(
       emit('delete', props.pet.id)
     }
     close()
+  }
+
+  /** 安装未安装的宠物。不关闭弹窗：安装完成后由外部刷新 pet.installed 状态。 */
+  function handleInstall(): void {
+    if (props.pet) {
+      emit('install', props.pet.id)
+    }
   }
 
   function playAnim(rowId: string): void {
@@ -103,12 +107,12 @@ export function useDetailModal(
     animRows,
     activeAction,
     canUse,
-    canDownload,
     canDelete,
+    canInstall,
     close,
-    handleDownload,
     handleUse,
     handleDelete,
+    handleInstall,
     playAnim
   }
 }

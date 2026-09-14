@@ -1,9 +1,12 @@
 // 命令层入口（commands module 根）。
 //
 // 遵循 tauri-harness 后端规范：commands 层是薄入口，参数校验 → service → DTO。
-// 本应用当前只有 desktop_pet 一个命令模块。
+// 命令模块：
+//   - desktop_pet：本地宠物管理 + 悬浮窗口控制 + WorkBuddy 联动/统计
+//   - pet_market ：petdex.dev 在线宠物市场（浏览 / 搜索 / 下载安装）
 
 pub mod desktop_pet;
+pub mod pet_market;
 
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};

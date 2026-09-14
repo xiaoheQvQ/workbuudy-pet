@@ -45,8 +45,6 @@ export default {
   'ui.pet.movementFree': 'Free roam',
   'ui.pet.movementFixed': 'Fixed in place',
   'ui.pet.myPets': 'My pets',
-  'ui.pet.market': 'Pet market',
-  'ui.pet.search': 'Search pets…',
 
   // Status bar / guide
   'ui.pet.status.state': 'Status',
@@ -57,46 +55,21 @@ export default {
   'ui.pet.guide.disabled': 'The pet is off. Toggle the switch in the top-right to show it on your desktop. Pick one you like first.',
 
   // Empty / loading
-  'ui.pet.noLocal': 'No pets yet — grab one from the market',
-  'ui.pet.noLocalAlt': 'No pets installed yet. Check out the market.',
   'ui.pet.loading': 'Loading…',
-  'ui.pet.noMarketResult': 'No matching pets found',
-  'ui.pet.noMarketResultAlt': 'No pets found. Try a different keyword.',
 
   // Card tags
   'ui.pet.tag.builtin': 'Built-in',
   'ui.pet.tag.inUse': 'In use',
-  'ui.pet.tag.installed': 'Installed',
+  'ui.pet.tag.market': 'Market',
 
   // Action buttons
   'ui.pet.use': 'Use',
   'ui.pet.delete': 'Delete',
-  'ui.pet.download': 'Download',
   'ui.pet.detail': 'Details',
   'ui.pet.actions': 'Actions',
   'ui.pet.preview': 'Preview',
-  'ui.pet.searchBtn': 'Search',
-  'ui.pet.searchPlaceholder': 'Search pet name…',
-  'ui.pet.prevPage': 'Prev',
-  'ui.pet.nextPage': 'Next',
-
-  // Kind filters
-  'ui.pet.kind.all': 'All',
-  'ui.pet.kind.allCategory': 'All categories',
-  'ui.pet.kind.person': 'Person',
-  'ui.pet.kind.animal': 'Animal',
-  'ui.pet.kind.creature': 'Creature',
-  'ui.pet.kind.object': 'Object',
-
-  // Sort options
-  'ui.pet.sort.new': 'Newest',
-  'ui.pet.sort.popular': 'Popular',
-  'ui.pet.sort.views': 'Most viewed',
-  'ui.pet.sort.discussed': 'Most discussed',
-  'ui.pet.sort.random': 'Random',
 
   // --- Detail modal (ui.detail.*) ---------------------------------------
-  'ui.detail.downloadAndUse': 'Download & use',
   'ui.detail.setActive': 'Set as current',
   'ui.detail.close': 'Close',
   'ui.detail.animTitle': 'Animations (click to preview)',
@@ -125,18 +98,6 @@ export default {
   'ui.stats.calls': ' calls',
   'ui.stats.noData': 'No AI activity today yet~',
 
-  // --- Market proxy (ui.proxy.*) -----------------------------------------
-  'ui.proxy.title': 'Network proxy',
-  'ui.proxy.mode.auto': 'Auto (Clash default)',
-  'ui.proxy.mode.direct': 'Direct (no proxy)',
-  'ui.proxy.mode.custom': 'Custom',
-  'ui.proxy.customPlaceholder': 'http://127.0.0.1:7890',
-  'ui.proxy.apply': 'Apply',
-  'ui.proxy.test': 'Test',
-  'ui.proxy.connected': 'Connected ({ms}ms)',
-  'ui.proxy.failed': 'Failed: {error}',
-  'ui.proxy.marketError': 'Cannot connect to pet market. Check your proxy settings (Clash default port: 7890).',
-
   // --- Local import (ui.pet.import*) -------------------------------------
   'ui.pet.import': 'Import pet',
   'ui.pet.importSuccess': 'Imported "{name}" and set as current pet',
@@ -162,14 +123,28 @@ export default {
   'ui.common.confirm': 'OK',
   'ui.common.cancel': 'Cancel',
 
-  // --- Toast messages (ui.msg.*) ----------------------------------------
-  'ui.msg.downloaded': 'Downloaded "{name}" and set as current pet',
-  'ui.msg.downloadFailed': 'Download failed: {error}',
-
   // --- App update (ui.update.*) ----------------------------------------
   'ui.update.available': 'New version {version} available',
   'ui.update.download': 'Download update',
   'ui.update.installing': 'Installing…',
   'ui.update.downloadFailed': 'Update failed: {error}',
-  'ui.update.tooltip': 'Click to download and install {version} (restarts automatically)'
+  'ui.update.tooltip': 'Click to download and install {version} (restarts automatically)',
+
+  // --- Online market (ui.market.*) --------------------------------------
+  'ui.market.title': 'Online Market',
+  'ui.market.searchPlaceholder': 'Search pets (name / description / tags)',
+  'ui.market.allKinds': 'All types',
+  'ui.market.sort.curated': 'Curated',
+  'ui.market.sort.recent': 'Newest',
+  'ui.market.sort.popular': 'Most liked',
+  'ui.market.sort.installed': 'Most installed',
+  'ui.market.sort.alpha': 'Alphabetical',
+  'ui.market.refresh': 'Refresh',
+  'ui.market.retry': 'Retry',
+  'ui.market.empty': 'No pets matched. Try another keyword.',
+  'ui.market.error': 'Failed to load: {error}',
+  'ui.market.install': 'Install',
+  'ui.market.installed': 'Installed',
+  'ui.market.installSuccess': 'Installed "{name}" and set as current pet',
+  'ui.market.installFailed': 'Install failed: {error}'
 } as const

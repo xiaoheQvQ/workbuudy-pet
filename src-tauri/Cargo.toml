@@ -37,9 +37,6 @@ tokio = { version = "1", features = ["full"] }
 # 时间处理（版本号时间戳）
 chrono = { version = "0.4", features = ["serde"] }
 
-# HTTP 客户端（codex-pets.net 市场搜索/下载）
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
-
 # 日志
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -47,6 +44,14 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # 错误处理
 thiserror = "2"
 anyhow = "1"
+
+# HTTP 客户端（在线宠物市场：拉取 petdex 清单 + 下载精灵图）
+# rustls-tls: 纯 Rust TLS，免去 OpenSSL 系统依赖，三平台构建一致
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls",
+    "json",
+    "gzip",
+] }
 
 # 本地 HTTP 服务（接收 WorkBuddy hook 转发的事件）
 axum = "0.7"

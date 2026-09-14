@@ -14,9 +14,6 @@ pub enum AppError {
     #[error("序列化错误: {0}")]
     Serialize(#[from] serde_json::Error),
 
-    #[error("HTTP 错误: {0}")]
-    Http(#[from] reqwest::Error),
-
     #[error("Tauri 错误: {0}")]
     Tauri(#[from] tauri::Error),
 

@@ -211,6 +211,7 @@
 
 /* --- tab 导航 --- */
 .pm-tabs {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -267,11 +268,6 @@
   gap: 12px;
 }
 
-/* 筛选栏：固定在面板顶部，不滚动 */
-.pm-filters {
-  flex-shrink: 0;
-}
-
 /* 列表滚动区：只有这里滚。
    顶部留 padding 容纳卡片 hover 时的 translateY 上移，避免第一行卡片被容器顶部裁切。 */
 .pm-list {
@@ -282,159 +278,8 @@
   padding-bottom: 4px;
 }
 
-.pm-empty {
-  padding: 40px 16px;
-  text-align: center;
-  font-size: var(--text-base);
-  color: var(--color-text-tertiary);
-}
-
-/* 卡片网格 */
-.pm-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 14px;
-}
-
-/* --- 宠物卡片（去 border，靠白色卡片 + 彩色阴影分层） --- */
-.pm-card {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  background: var(--color-bg-card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-  cursor: pointer;
-  transition:
-    box-shadow var(--duration) var(--ease),
-    transform var(--duration) var(--ease);
-}
-
-.pm-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-hover);
-}
-
-.pm-card:active {
-  transform: translateY(-1px) scale(0.99);
-}
-
-/* 选中态：用 outline 内描边而非 box-shadow。
-   - 不被相邻卡片/容器边缘遮挡（outline 不占布局、不裁切）。
-   - 不与 hover 的 box-shadow 冲突（不同属性），hover 时高亮保留 + 抬升阴影共存。 */
-.pm-card--active {
-  outline: 2px solid var(--color-primary);
-  outline-offset: -2px;
-}
-
-.pm-card__thumb {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 192 / 208;
-  margin-bottom: 10px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--color-bg-muted);
-}
-
-.pm-card__tag {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 2px 8px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #fff;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-  border-radius: 99px;
-}
-
-.pm-card__tag--active {
-  background: var(--color-primary);
-}
-
-.pm-card__tag--done {
-  background: rgba(22, 163, 74, 0.85);
-}
-
-.pm-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-}
-
-.pm-card__name {
-  margin: 0;
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pm-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pm-card__kind {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-  text-transform: capitalize;
-}
-
-.pm-card__dl {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-  font-variant-numeric: tabular-nums;
-}
-
-.pm-card__action {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* --- 筛选栏（面板内固定，不滚） --- */
-.pm-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-.pm-filters__search {
-  flex: 1;
-  min-width: 160px;
-}
-
-.pm-filters__select {
-  width: 124px;
-}
-
-/* --- 分页（固定吸底） --- */
-.pm-pager {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.pm-pager__info {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-  min-width: 56px;
-  text-align: center;
-}
+/* 卡片 / 网格 / 空态样式已抽到 cards.css（本地列表与在线市场共用，
+   因 scoped 样式无法跨组件命中，需各组件自行引入）。 */
 
 /* --- 设置区：可折叠（默认收起，释放垂直空间给宠物列表） --- */
 .pm-settings {
@@ -601,12 +446,6 @@
   flex: 1;
 }
 
-/* 代理模式下拉选择器（固定窄宽） */
-.pm-setting__control--proxy-mode {
-  width: 160px;
-  flex-shrink: 0;
-}
-
 /* 列表头部：宠物计数 + 导入按钮 */
 .pm-list__header {
   flex-shrink: 0;
@@ -620,26 +459,11 @@
   color: var(--color-text-tertiary);
 }
 
-/* 市场连接失败警告条 */
-.pm-market-error {
-  flex-shrink: 0;
-  padding: 10px 16px;
-  font-size: var(--text-sm);
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: var(--radius-md);
-}
-
 /* --- 响应式 --- */
 @media (max-width: 640px) {
   .pet-manager {
     padding: 20px 16px 24px;
     gap: 16px;
-  }
-  .pm-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
   }
   .pm-settings {
     grid-template-columns: 1fr;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * PetDetailModal 组件：桌面宠物详情弹窗，展示预览、动画与下载/使用。
+ * PetDetailModal 组件：桌面宠物详情弹窗，展示预览、动画与使用/删除。
  *
  * 布局：左预览 + 右信息（标题行含操作按钮），左右独立高度不互相撑开。
  */
@@ -17,12 +17,12 @@ const {
   animRows,
   activeAction,
   canUse,
-  canDownload,
   canDelete,
+  canInstall,
   close,
-  handleDownload,
   handleUse,
   handleDelete,
+  handleInstall,
   playAnim
 } = useDetailModal(props, emit as never)
 </script>
@@ -58,6 +58,10 @@ const {
                 class="pet-detail__kind"
               >{{ pet.kind }}</span>
               <span
+                v-if="pet.submittedBy"
+                class="pet-detail__kind"
+              >by {{ pet.submittedBy }}</span>
+              <span
                 v-if="pet.source === 'builtin'"
                 class="pet-detail__badge"
               >内置</span>
@@ -69,26 +73,31 @@ const {
                 v-else-if="pet.source === 'uploaded'"
                 class="pet-detail__badge pet-detail__badge--muted"
               >已上传</span>
+              <span
+                v-else-if="pet.source === 'market'"
+                class="pet-detail__badge pet-detail__badge--muted"
+              >在线</span>
             </div>
           </div>
 
           <!-- 操作按钮直接放在标题旁边 -->
           <div class="pet-detail__top-actions">
             <n-button
-              v-if="canDownload"
-              size="small"
-              type="primary"
-              @click="handleDownload"
-            >
-              下载并使用
-            </n-button>
-            <n-button
-              v-else-if="canUse"
+              v-if="canUse"
               size="small"
               type="primary"
               @click="handleUse"
             >
               设为当前
+            </n-button>
+            <!-- 在线市场来源且未安装：主操作为「安装到本地」 -->
+            <n-button
+              v-else-if="canInstall"
+              size="small"
+              type="primary"
+              @click="handleInstall"
+            >
+              安装到本地
             </n-button>
             <span
               v-else

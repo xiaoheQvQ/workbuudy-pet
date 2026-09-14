@@ -1,0 +1,108 @@
+/* ============================================================
+   MarketPanel — 在线宠物市场
+   布局：固定工具条 + 中间网格独立滚动 + 固定分页
+   ============================================================ */
+
+.market-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* --- 工具条 --- */
+.market-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.market-toolbar__search {
+  flex: 1;
+  min-width: 0;
+}
+
+.market-toolbar__sort {
+  width: 118px;
+  flex-shrink: 0;
+}
+
+.market-toolbar__kind {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+/* --- 内容滚动区 --- */
+.market-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* 顶部留白容纳卡片 hover 上移，避免首行被裁切。 */
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* --- 卡片 --- */
+.market-card {
+  position: relative;
+}
+
+/* 安装按钮贴卡片底部：pm-card__body 有 flex:1，卡片等高时按钮自然对齐 */
+.market-card__action {
+  flex-shrink: 0;
+  margin-top: 10px;
+  width: 100%;
+}
+
+/* 卡片 meta 行：图鉴编号 + 安装量（等宽字体，与官网卡片的 No.xxx / ↓ 计数呼应） */
+.market-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-family: var(--font-mono, 'SF Mono', 'Menlo', monospace);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.market-card__stat {
+  margin-left: auto;
+}
+
+/* --- 错误 / 空态 --- */
+.market-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.market-empty__text {
+  margin: 0;
+  max-width: 520px;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-text-tertiary);
+  word-break: break-word;
+}
+
+/* --- 分页 --- */
+.market-pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .market-toolbar__sort {
+    width: 100px;
+  }
+  .market-toolbar__kind {
+    width: 110px;
+  }
+}
