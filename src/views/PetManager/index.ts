@@ -51,8 +51,8 @@ export function usePetManager() {
   // --- 待办日历（近 7 日待办数，标签页角标用） --------------------------------
   const upcoming7Count = computed(() => todoStore.upcoming7Count)
 
-  // --- 标签页（我的宠物 / 在线市场 / 待办日历）-------------------------------
-  const activeTab = ref<'local' | 'market' | 'todo'>('local')
+  // --- 标签页（我的宠物 / 在线市场 / 待办日历 / 进程管理）-----------------------
+  const activeTab = ref<'local' | 'market' | 'todo' | 'process'>('local')
 
   // --- 详情弹窗状态 ------------------------------------------------------
   const detailVisible = ref(false)

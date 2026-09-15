@@ -1,362 +1,297 @@
 /**
- * TodoPanel 样式（BEM，与 PetManager 主题色保持一致）。
+ * TodoPanel 样式 — 深色日历（参考滴答清单式 UI）。
+ *
+ * 设计令牌：
+ *   面板底 #17181c / 卡片 #202227 / 格子 #1c1e23 / 线 #26282e
+ *   文字 #e8eaed / 次要 #8b909a / 强调蓝 #4c8dff
+ *   绿 #3fbf6f（完成）· 琥珀 #f5a623（提醒）· 红 #ff5d5d（横幅）
  */
 
-/* --- 头部 ---------------------------------------------------------------- */
+/* 设计令牌同时挂在 .todo-app 与 .tmask 上：
+   编辑器弹层经 Teleport 挂到 body，脱离 .todo-app 作用域，需单独覆盖。 */
+.todo-app,
+.tmask {
+  --t-bg: #17181c;
+  --t-card: #202227;
+  --t-cell: #1c1e23;
+  --t-line: #26282e;
+  --t-hover: #262930;
+  --t-text: #e8eaed;
+  --t-text-2: #8b909a;
+  --t-accent: #4c8dff;
+  --t-green: #3fbf6f;
+  --t-amber: #f5a623;
+  --t-red: #ff5d5d;
+}
 
-.todo-panel {
+.todo-app {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 0;
+  color-scheme: dark;
+  color: var(--t-text);
+  background: var(--t-bg);
+  border: 1px solid var(--t-line);
+  border-radius: 14px;
+  padding: 14px;
 }
 
-.todo-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+/* ============ 提醒横幅 ============ */
 
-.todo-head__stats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.todo-head__badge {
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--n-color-target, #2563eb);
-  background: rgba(37, 99, 235, 0.1);
-}
-
-.todo-head__badge--muted {
-  color: #6b7280;
-  background: rgba(107, 114, 128, 0.1);
-  font-weight: 500;
-}
-
-.todo-head__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.todo-head__mode {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.todo-head__mode-label {
-  font-size: 12px;
-  color: #6b7280;
-  white-space: nowrap;
-}
-
-.todo-head__mode-select {
-  width: 120px;
-}
-
-.todo-head__hint {
-  margin: 0;
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-/* --- 提醒横幅 ------------------------------------------------------------ */
-
-.todo-reminder {
+.talert {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--reminder-color, #3b82f6) 35%, transparent);
-  background: color-mix(in srgb, var(--reminder-color, #3b82f6) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  background: color-mix(in srgb, var(--c) 10%, var(--t-card));
 }
 
-.todo-reminder__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--reminder-color, #3b82f6);
+.talert__icon {
+  width: 16px;
+  height: 16px;
   flex: none;
+  color: var(--c);
 }
 
-.todo-reminder__body {
+.talert__body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
-.todo-reminder__title {
+.talert__title {
   font-size: 13px;
   font-weight: 600;
-  color: #1f2937;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.todo-reminder__meta {
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.todo-reminder__actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.talert__meta {
   flex: none;
+  font-size: 11px;
+  color: var(--t-text-2);
+  font-variant-numeric: tabular-nums;
 }
 
-/* --- 布局 ---------------------------------------------------------------- */
-
-.todo-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  gap: 14px;
-  align-items: start;
-}
-
-@media (max-width: 860px) {
-  .todo-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* --- 月历 ---------------------------------------------------------------- */
-
-.todo-cal {
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  border-radius: 12px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.6);
-}
-
-.todo-cal__nav {
+.talert__actions {
+  flex: none;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
 }
 
-.todo-cal__month {
-  font-size: 14px;
-  font-weight: 700;
-  color: #111827;
+/* ============ 主布局 ============ */
+
+.todo-main {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
 }
 
-.todo-cal__nav-btn {
+/* ============ 左侧栏 ============ */
+
+.tside {
+  flex: none;
+  width: 244px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.tstats {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tstat {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  background: var(--t-card);
+  border-radius: 10px;
+}
+
+.tstat__icon {
   width: 26px;
   height: 26px;
-  border: none;
   border-radius: 8px;
-  background: rgba(17, 24, 39, 0.05);
-  color: #374151;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.todo-cal__nav-btn:hover {
-  background: rgba(17, 24, 39, 0.1);
-}
-
-.todo-cal__today {
-  border: 1px solid rgba(37, 99, 235, 0.35);
-  border-radius: 8px;
-  background: transparent;
-  color: #2563eb;
-  font-size: 12px;
-  padding: 3px 10px;
-  cursor: pointer;
-}
-
-.todo-cal__today:hover {
-  background: rgba(37, 99, 235, 0.08);
-}
-
-.todo-cal__weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 4px;
-}
-
-.todo-cal__weekday {
-  text-align: center;
-  font-size: 11px;
-  color: #9ca3af;
-  padding: 2px 0;
-}
-
-.todo-cal__grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-}
-
-.todo-cal__cell {
-  position: relative;
-  aspect-ratio: 1 / 0.82;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 2px;
 }
 
-.todo-cal__cell:hover {
-  background: rgba(17, 24, 39, 0.05);
+.tstat__icon svg {
+  width: 15px;
+  height: 15px;
 }
 
-.todo-cal__cell--out {
-  opacity: 0.35;
+.tstat__icon--blue {
+  color: var(--t-accent);
+  background: rgba(76, 141, 255, 0.14);
 }
 
-.todo-cal__cell--today {
-  border-color: rgba(37, 99, 235, 0.5);
+.tstat__icon--green {
+  color: var(--t-green);
+  background: rgba(63, 191, 111, 0.14);
 }
 
-.todo-cal__cell--selected {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.6);
+.tstat__icon--amber {
+  color: var(--t-amber);
+  background: rgba(245, 166, 35, 0.14);
 }
 
-.todo-cal__day {
-  font-size: 12px;
-  color: #374151;
-  line-height: 1;
+.tstat__icon--red {
+  color: var(--t-red);
+  background: rgba(255, 93, 93, 0.14);
 }
 
-.todo-cal__cell--pending .todo-cal__day {
+.tstat__num {
+  font-size: 17px;
   font-weight: 700;
-  color: #111827;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
 
-.todo-cal__dots {
-  display: flex;
-  gap: 2px;
-  min-height: 5px;
+.tstat__label {
+  font-size: 11px;
+  color: var(--t-text-2);
 }
 
-.todo-cal__dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-}
+/* --- 选中日任务 --- */
 
-/* --- 选中日任务列表 --------------------------------------------------------- */
-
-.todo-day {
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  border-radius: 12px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.6);
+.tday {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.todo-day__head {
+.tday__head {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.todo-day__date {
+.tday__date {
+  flex: 1;
   font-size: 13px;
   font-weight: 700;
-  color: #111827;
-  flex: 1;
+  font-variant-numeric: tabular-nums;
 }
 
-.todo-day__count {
+.tday__count {
   font-size: 11px;
-  color: #6b7280;
+  font-weight: 600;
+  color: var(--t-accent);
+  background: rgba(76, 141, 255, 0.14);
+  border-radius: 999px;
+  padding: 1px 8px;
 }
 
-.todo-day__quick {
+.tday__quick {
   flex: none;
 }
 
-.todo-day__list {
+.tday__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 300px;
-  overflow-y: auto;
-  min-height: 60px;
+  padding-right: 2px;
 }
 
-.todo-day__empty {
+.tday__empty {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--t-text-2);
   text-align: center;
-  padding: 18px 6px;
+  padding: 20px 8px;
+  line-height: 1.6;
 }
 
-.todo-item {
+.trow {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 7px 8px;
-  border-radius: 10px;
-  border-left: 3px solid var(--task-color, #3b82f6);
-  background: rgba(17, 24, 39, 0.03);
+  padding: 7px 9px;
+  border-radius: 9px;
+  border-left: 3px solid var(--c, var(--t-accent));
+  background: var(--t-card);
+  transition: background-color 0.15s ease;
 }
 
-.todo-item--done {
-  opacity: 0.55;
+.trow:hover {
+  background: var(--t-hover);
 }
 
-.todo-item--done .todo-item__title {
+.trow--done {
+  opacity: 0.5;
+}
+
+.trow--done .trow__title {
   text-decoration: line-through;
 }
 
-.todo-item__check {
-  width: 18px;
-  height: 18px;
+.trow__check {
   flex: none;
+  width: 17px;
+  height: 17px;
   margin-top: 1px;
-  border: 1.5px solid #9ca3af;
-  border-radius: 6px;
+  border: 1.5px solid #3a3d44;
+  border-radius: 50%;
   background: transparent;
   color: transparent;
-  font-size: 12px;
-  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.todo-item--done .todo-item__check {
-  border-color: #22c55e;
-  background: #22c55e;
+.trow__check svg {
+  width: 9px;
+  height: 9px;
+}
+
+.trow__check:hover {
+  border-color: var(--t-green);
+}
+
+.trow--done .trow__check {
+  border-color: var(--t-green);
+  background: var(--t-green);
   color: #fff;
 }
 
-.todo-item__body {
+.trow__body {
   flex: 1;
   min-width: 0;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.todo-item__title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1f2937;
+.trow__title {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -364,242 +299,609 @@
   -webkit-box-orient: vertical;
 }
 
-.todo-item__daily,
-.todo-item__bell {
+.trow__tag {
+  font-style: normal;
   font-size: 10px;
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.1);
+  color: var(--t-accent);
+  background: rgba(76, 141, 255, 0.14);
   border-radius: 4px;
-  padding: 1px 5px;
+  padding: 0 4px;
   margin-left: 4px;
   vertical-align: 1px;
 }
 
-.todo-item__bell {
-  background: transparent;
-  padding: 0;
-  margin-left: 2px;
-}
-
-.todo-item__note {
+.trow__note {
   font-size: 11px;
-  color: #6b7280;
-  margin-top: 2px;
+  color: var(--t-text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.todo-item__del {
+.trow__bell {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+  color: var(--t-amber);
+}
+
+.trow__del {
+  flex: none;
   border: none;
   background: transparent;
-  color: #9ca3af;
+  color: #55595f;
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
   padding: 0 2px;
 }
 
-.todo-item__del:hover {
-  color: #ef4444;
+.trow__del:hover {
+  color: var(--t-red);
 }
 
-/* --- 编辑器弹层 ------------------------------------------------------------ */
+/* --- 侧栏底部 --- */
 
-.todo-editor-mask {
+.tside__foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--t-line);
+}
+
+.tfoot-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tfoot-row__label {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--t-text-2);
+}
+
+.tfoot-hint {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #6a6f77;
+}
+
+/* ============ 右侧月历 ============ */
+
+.tcal {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.tcal__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tcal__month {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tcal__nav {
+  display: flex;
+  gap: 6px;
+}
+
+.tcal__weekdays {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.tcal__weekday {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t-text-2);
+  padding: 2px 0;
+}
+
+.tgrid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(76px, 1fr);
+  gap: 1px;
+  background: var(--t-line);
+  border: 1px solid var(--t-line);
+  border-radius: 12px;
+  overflow-y: auto;
+}
+
+.tcell {
+  background: var(--t-cell);
+  padding: 6px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.tcell:hover {
+  background: var(--t-hover);
+}
+
+.tcell--out {
+  opacity: 0.38;
+}
+
+.tcell--selected {
+  box-shadow: inset 0 0 0 2px var(--t-accent);
+  background: color-mix(in srgb, var(--t-accent) 8%, var(--t-cell));
+}
+
+.tcell__day {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-text-2);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* 今天：蓝色日期数（参考 UI 同款）。 */
+.tcell__day--today {
+  color: var(--t-accent);
+}
+
+.tcell__chips {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tchip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--c) 16%, #26282e);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #c9cdd3;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.tchip:hover {
+  background: color-mix(in srgb, var(--c) 28%, #26282e);
+}
+
+.tchip__dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.tchip__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tchip__bell {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  color: var(--t-amber);
+}
+
+.tchip--done {
+  opacity: 0.45;
+}
+
+.tchip--done .tchip__text {
+  text-decoration: line-through;
+}
+
+.tchip--more {
+  background: transparent;
+  color: var(--t-text-2);
+  padding-left: 15px;
+}
+
+/* ============ 通用控件 ============ */
+
+.tbtn {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #26282e;
+  color: #d6d9de;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 5px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.tbtn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.tbtn:hover {
+  background: #2e3138;
+  color: #fff;
+}
+
+.tbtn:active {
+  transform: scale(0.97);
+}
+
+.tbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tbtn--accent {
+  background: rgba(76, 141, 255, 0.15);
+  color: var(--t-accent);
+  border-color: rgba(76, 141, 255, 0.35);
+}
+
+.tbtn--accent:hover {
+  background: rgba(76, 141, 255, 0.25);
+  color: var(--t-accent);
+}
+
+.tbtn--ghost {
+  background: transparent;
+  color: var(--t-text-2);
+}
+
+.tbtn--tiny {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.tbtn--pin {
+  width: 100%;
+}
+
+.tinput {
+  width: 100%;
+  border: 1px solid #2e3136;
+  border-radius: 8px;
+  background: #232529;
+  color: var(--t-text);
+  font-size: 12.5px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.tinput::placeholder {
+  color: #5d626a;
+}
+
+.tinput:focus {
+  border-color: var(--t-accent);
+}
+
+.tselect {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #2e3136;
+  border-radius: 8px;
+  background: #232529;
+  color: var(--t-text);
+  font-size: 12px;
+  padding: 4px 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.tselect:focus {
+  border-color: var(--t-accent);
+}
+
+/* ============ 编辑器弹层 ============ */
+
+.tmask {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, 0.4);
+  background: rgba(8, 9, 11, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  color-scheme: dark;
+  color: var(--t-text);
 }
 
-.todo-editor {
-  width: 420px;
+.tdialog {
+  width: 440px;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  background: #fff;
+  background: #1d1f24;
+  border: 1px solid #2e3136;
   border-radius: 14px;
-  box-shadow: 0 20px 50px rgba(17, 24, 39, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
 }
 
-.todo-editor__head {
+.tdialog__head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 0;
+  padding: 14px 18px 0;
 }
 
-.todo-editor__title {
+.tdialog__title {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
 }
 
-.todo-editor__close {
+.tdialog__close {
   border: none;
   background: transparent;
   font-size: 20px;
   line-height: 1;
-  color: #9ca3af;
+  color: var(--t-text-2);
   cursor: pointer;
 }
 
-.todo-editor__close:hover {
-  color: #374151;
+.tdialog__close:hover {
+  color: #fff;
 }
 
-.todo-editor__body {
-  padding: 12px 16px;
+.tdialog__body {
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.todo-editor__field {
+.tfield {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.todo-editor__field--date {
-  flex: 1;
-}
-
-.todo-editor__field--switch {
+.tfield--switch {
   flex-direction: row;
   align-items: center;
   gap: 10px;
 }
 
-.todo-editor__label {
+.tfield__label {
   font-size: 12px;
   font-weight: 600;
-  color: #374151;
+  color: var(--t-text-2);
 }
 
-.todo-editor__row {
-  display: flex;
+.tfield-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-.todo-editor__date {
-  height: 32px;
-  border: 1px solid rgba(17, 24, 39, 0.15);
-  border-radius: 6px;
-  padding: 0 8px;
-  font-size: 13px;
-  color: #111827;
-  background: #fff;
-  width: 100%;
+.ttextarea {
+  resize: vertical;
+  min-height: 44px;
+  font-family: inherit;
+  line-height: 1.5;
 }
 
-.todo-editor__status {
+.tseg {
   display: flex;
-  gap: 6px;
+  gap: 0;
+  border: 1px solid #2e3136;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.todo-editor__status-btn {
-  border: 1px solid rgba(17, 24, 39, 0.15);
-  border-radius: 6px;
-  background: #fff;
-  color: #374151;
+.tseg__btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--t-text-2);
   font-size: 12px;
-  padding: 4px 12px;
+  padding: 5px 0;
   cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.todo-editor__status-btn--active {
-  border-color: #2563eb;
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.08);
+.tseg__btn:hover {
+  color: var(--t-text);
 }
 
-.todo-editor__colors {
+.tseg__btn--active {
+  background: rgba(76, 141, 255, 0.18);
+  color: var(--t-accent);
+}
+
+.tcolors {
   display: flex;
   gap: 8px;
 }
 
-.todo-editor__color {
-  width: 22px;
-  height: 22px;
+.tcolor {
+  width: 21px;
+  height: 21px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
   padding: 0;
+  transition: transform 0.12s ease;
 }
 
-.todo-editor__color--active {
-  border-color: #111827;
-  box-shadow: 0 0 0 2px #fff inset;
+.tcolor:hover {
+  transform: scale(1.12);
 }
 
-.todo-editor__hint {
-  margin: -4px 0 0;
-  font-size: 11px;
-  color: #9ca3af;
+.tcolor--active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #1d1f24 inset;
 }
 
-.todo-editor__reminders {
+.thint {
+  margin: -6px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #6a6f77;
+}
+
+/* 开关（自绘，替代 n-switch） */
+
+.tswitch {
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: #3a3d44;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.18s ease;
+}
+
+.tswitch i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.18s ease;
+}
+
+.tswitch--on {
+  background: var(--t-accent);
+}
+
+.tswitch--on i {
+  transform: translateX(14px);
+}
+
+.tswitch--sm {
+  width: 28px;
+  height: 16px;
+}
+
+.tswitch--sm i {
+  width: 12px;
+  height: 12px;
+}
+
+.tswitch--sm.tswitch--on i {
+  transform: translateX(12px);
+}
+
+/* 提醒行 */
+
+.treminders {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.todo-editor__reminder {
+.treminder {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.todo-editor__time {
-  height: 30px;
-  border: 1px solid rgba(17, 24, 39, 0.15);
-  border-radius: 6px;
-  padding: 0 8px;
-  font-size: 13px;
-  color: #111827;
-  background: #fff;
-  width: 120px;
+.treminder__time {
+  width: 118px;
+  flex: none;
 }
 
-.todo-editor__reminder-del {
+.treminder__del {
   border: none;
   background: transparent;
-  color: #9ca3af;
+  color: #55595f;
   font-size: 15px;
   cursor: pointer;
 }
 
-.todo-editor__reminder-del:hover {
-  color: #ef4444;
+.treminder__del:hover {
+  color: var(--t-red);
 }
 
-.todo-editor__reminder-add {
+.treminder__add {
   align-self: flex-start;
-  border: 1px dashed rgba(17, 24, 39, 0.25);
+  border: 1px dashed #3a3d44;
   border-radius: 6px;
   background: transparent;
-  color: #6b7280;
+  color: var(--t-text-2);
   font-size: 12px;
   padding: 4px 10px;
   cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.todo-editor__reminder-add:hover {
-  border-color: #2563eb;
-  color: #2563eb;
+.treminder__add:hover {
+  border-color: var(--t-accent);
+  color: var(--t-accent);
 }
 
-.todo-editor__foot {
+.tdialog__foot {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 0 16px 14px;
+  padding: 0 18px 16px;
+}
+
+/* ============ 滚动条（深色） ============ */
+
+.tday__list::-webkit-scrollbar,
+.tgrid::-webkit-scrollbar,
+.tdialog::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tday__list::-webkit-scrollbar-thumb,
+.tgrid::-webkit-scrollbar-thumb,
+.tdialog::-webkit-scrollbar-thumb {
+  background: #2e3136;
+  border-radius: 4px;
+}
+
+.tday__list::-webkit-scrollbar-track,
+.tgrid::-webkit-scrollbar-track,
+.tdialog::-webkit-scrollbar-track {
+  background: transparent;
 }

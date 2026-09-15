@@ -4,9 +4,11 @@
 // 命令模块：
 //   - desktop_pet：本地宠物管理 + 悬浮窗口控制 + WorkBuddy 联动/统计
 //   - pet_market ：petdex.dev 在线宠物市场（浏览 / 搜索 / 下载安装）
+//   - process    ：进程管理（枚举进程 / 端口占用 / 结束进程）
 
 pub mod desktop_pet;
 pub mod pet_market;
+pub mod process;
 pub mod todo_board;
 
 use std::path::PathBuf;

@@ -47,14 +47,22 @@ anyhow = "1"
 
 # HTTP 客户端（在线宠物市场：拉取 petdex 清单 + 下载精灵图）
 # rustls-tls: 纯 Rust TLS，免去 OpenSSL 系统依赖，三平台构建一致
+# system-proxy: 读取操作系统代理设置（Windows 注册表 / macOS 系统配置）。
+#   它在 reqwest 的 default 特性里，关掉 default-features 后必须显式加回，
+#   否则只会读 HTTPS_PROXY 等环境变量；企业网/代理环境（如系统代理 127.0.0.1:7890）
+#   下直连 petdex.dev 会超时，表现为「在线市场不可用」。
 reqwest = { version = "0.12", default-features = false, features = [
     "rustls-tls",
     "json",
     "gzip",
+    "system-proxy",
 ] }
 
 # 本地 HTTP 服务（接收 WorkBuddy hook 转发的事件）
 axum = "0.7"
+# 进程枚举（进程管理面板：名称 / PID / 内存 / CPU）
+# 仅用 system 模块（进程 + CPU 采样），关闭默认特性以减少编译面。
+sysinfo = { version = "0.33", default-features = false, features = ["system"] }
 # 定位 ~/.workbuddy 等用户目录
 dirs = "5"
 # 只读访问 WorkBuddy SQLite 统计库（token 使用量查询）

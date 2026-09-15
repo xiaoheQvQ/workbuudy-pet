@@ -1,15 +1,13 @@
 /**
- * useTodoPanel — 待办日历面板（管理窗口第三个标签页）的 composable。
+ * useTodoPanel — 待办日历面板（管理窗口「待办日历」标签页）的 composable。
  *
- * 职责：
- *   - 月历视图：生成 6 周网格，格子上以色点标记当天任务，点击选中某天；
- *   - 选中日的任务列表：新增（快速回车）/ 编辑 / 删除 / 勾选完成；
- *   - 任务编辑器：标题 / 备注 / 日期 / 颜色 / 状态 / 多条提醒（HH:mm）/ 每日任务；
- *   - 提醒横幅：展示到点的提醒，支持「标记完成 / 稍后 / 关闭」；
- *   - 固定到桌面：切换 todo-board 置顶小窗，并同步按钮固定状态；
- *   - 宠物上方日程展示范围（近七日 / 近半月 / 关闭）。
+ * 参考滴答清单式深色日历布局：
+ *   - 左侧栏：统计卡（全部待办 / 已完成 / 今日 / 提醒）+ 选中日任务列表 + 快速添加；
+ *   - 右侧：大月历（周一起始、两位日期数、格内任务胶囊、双击新建）；
+ *   - 顶部横幅：到点提醒（标记完成 / 稍后 / 关闭）；
+ *   - 侧栏底部：宠物上方日程展示范围 + 固定到桌面。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { useTodoScheduleStore } from '@/stores/todoSchedule'
@@ -17,8 +15,6 @@ import {
   addDays,
   fromDateStr,
   isTaskDoneOnDate,
-  taskOccursOn,
-  toDateStr,
   todayStr,
   TODO_COLORS,
   TODO_DEFAULT_COLOR,
@@ -33,21 +29,23 @@ import {
   toggleTodoBoardWindow
 } from '@/services/todoBoard'
 
-/** 一周从周日开始（与格子网格一致）。 */
+/** 一周从周一开始（与参考日历一致的周一.headers 顺序）。 */
 const WEEKDAY_KEYS = [
-  'ui.todo.weekday.sun',
   'ui.todo.weekday.mon',
   'ui.todo.weekday.tue',
   'ui.todo.weekday.wed',
   'ui.todo.weekday.thu',
   'ui.todo.weekday.fri',
-  'ui.todo.weekday.sat'
+  'ui.todo.weekday.sat',
+  'ui.todo.weekday.sun'
 ] as const
 
 /** 日历格子。 */
 export interface CalendarCell {
   /** YYYY-MM-DD。 */
   date: string
+  /** 两位日期数（01、02…），与参考 UI 一致。 */
+  dayLabel: string
   day: number
   /** 是否属于当前浏览月份。 */
   inMonth: boolean
@@ -56,6 +54,26 @@ export interface CalendarCell {
   /** 是否选中日。 */
   isSelected: boolean
 }
+
+/** 格内任务胶囊。 */
+export interface CellChip {
+  id: string
+  title: string
+  color: TodoColorKey
+  done: boolean
+  daily: boolean
+  hasReminder: boolean
+}
+
+/** 格内胶囊组：最多展示 3 个，余量折叠为「+N」。 */
+export interface CellChips {
+  visible: CellChip[]
+  more: number
+  total: number
+}
+
+/** 格内胶囊上限（避免撑爆格子）。 */
+const CHIP_LIMIT = 3
 
 /** 编辑器里的提醒草稿（编辑中允许空行）。 */
 interface ReminderDraft {
@@ -117,34 +135,36 @@ export function useTodoPanel() {
   const viewMonth = ref(now.getMonth()) // 0-11
   const selectedDate = ref(todayStr())
 
-  /** 月份标题，如 "2026年9月" / "September 2026"。 */
+  /** 月份标题：zh "2025 年 12 月" / en "December 2025"。 */
   const monthTitle = computed(() => {
+    if (locale.value === 'zh-CN') {
+      return `${viewYear.value} 年 ${viewMonth.value + 1} 月`
+    }
     const d = new Date(viewYear.value, viewMonth.value, 1)
-    return d.toLocaleDateString(locale.value === 'zh-CN' ? 'zh-CN' : 'en-US', {
-      year: 'numeric',
-      month: 'long'
-    })
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
   })
 
   const weekdayLabels = computed(() => WEEKDAY_KEYS.map((k) => t(k)))
 
-  /** 6 周（42 格）日历网格：从当月 1 号所在周的周日开始。 */
+  /** 6 周（42 格）日历网格：周一起始，从当月 1 号所在周的周一铺开。 */
   const calendarCells = computed<CalendarCell[]>(() => {
     const first = new Date(viewYear.value, viewMonth.value, 1)
     const start = new Date(first)
-    start.setDate(1 - first.getDay()) // 回退到本周周日
+    start.setDate(1 - ((first.getDay() + 6) % 7)) // 回退到本周周一
     const today = todayStr()
     const cells: CalendarCell[] = []
     for (let i = 0; i < 42; i += 1) {
       const d = new Date(start)
       d.setDate(start.getDate() + i)
-      const date = toDateStr(d)
+      const date = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      const dateStr = `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')}`
       cells.push({
-        date,
-        day: d.getDate(),
+        date: dateStr,
+        dayLabel: `${d.getDate()}`.padStart(2, '0'),
+        day: date.getDate(),
         inMonth: d.getMonth() === viewMonth.value,
-        isToday: date === today,
-        isSelected: date === selectedDate.value
+        isToday: dateStr === today,
+        isSelected: dateStr === selectedDate.value
       })
     }
     return cells
@@ -172,8 +192,71 @@ export function useTodoPanel() {
     const t0 = new Date()
     viewYear.value = t0.getFullYear()
     viewMonth.value = t0.getMonth()
-    selectedDate.value = toDateStr(t0)
+    selectedDate.value = todayStr()
   }
+
+  // --- 格内任务胶囊 -----------------------------------------------------------
+
+  /** 某格的任务胶囊（最多 3 个 + 折叠余量）。 */
+  function chipsOf(date: string): CellChips {
+    const tasks = todoStore.tasksForDate(date)
+    const toChip = (task: TodoTask): CellChip => ({
+      id: task.id,
+      title: task.title,
+      color: task.color,
+      done: isTaskDoneOnDate(task, date),
+      daily: task.repeatDaily,
+      hasReminder: task.reminders.some((r) => r.enabled)
+    })
+    return {
+      visible: tasks.slice(0, CHIP_LIMIT).map(toChip),
+      more: Math.max(0, tasks.length - CHIP_LIMIT),
+      total: tasks.length
+    }
+  }
+
+  /** 按日期缓存格内胶囊（模板里按 cell.date 取，避免每格重复计算三次）。 */
+  const chipsByDate = computed(() => {
+    const map = new Map<string, CellChips>()
+    for (const cell of calendarCells.value) {
+      map.set(cell.date, chipsOf(cell.date))
+    }
+    return map
+  })
+
+  // --- 侧栏统计 --------------------------------------------------------------
+
+  /** 全部待办：今天起 15 天内未完成的出现次数（每日任务按日展开）。 */
+  const allPendingCount = computed(() => todoStore.upcomingPending(15).length)
+
+  /** 今日待办。 */
+  const todayPendingCount = computed(() => {
+    const today = todayStr()
+    return todoStore.tasksForDate(today).filter((t) => !isTaskDoneOnDate(t, today)).length
+  })
+
+  /** 已完成：近 7 天（普通任务按 status，每日任务按 completedDates 计次）。 */
+  const doneRecentCount = computed(() => {
+    const today = todayStr()
+    const from = addDays(today, -6)
+    let n = 0
+    for (const task of todoStore.tasks) {
+      if (task.repeatDaily) {
+        n += task.completedDates.filter((d) => d >= from && d <= today).length
+      } else if (task.status === 'done' && task.date >= from && task.date <= today) {
+        n += 1
+      }
+    }
+    return n
+  })
+
+  /** 提醒：带有启用提醒且当前未完成的任务数。 */
+  const reminderTaskCount = computed(() => {
+    const today = todayStr()
+    return todoStore.tasks.filter(
+      (t) => t.reminders.some((r) => r.enabled) && !isTaskDoneOnDate(t, today)
+    ).length
+  })
 
   // --- 选中日任务 -----------------------------------------------------------
 
@@ -181,25 +264,6 @@ export function useTodoPanel() {
   const selectedPendingCount = computed(
     () => selectedTasks.value.filter((t) => !isTaskDoneOnDate(t, selectedDate.value)).length
   )
-
-  /** 某格日期的任务色点（颜色去重）。 */
-  function colorDotsOf(date: string): TodoColorKey[] {
-    const seen = new Set<TodoColorKey>()
-    for (const task of todoStore.tasksForDate(date)) {
-      seen.add(task.color)
-    }
-    return [...seen].slice(0, 4)
-  }
-
-  /** 某格日期是否有未完成任务（加粗标记）。 */
-  function hasPendingOn(date: string): boolean {
-    return todoStore.tasksForDate(date).some((t) => isTaskPending(t, date))
-  }
-
-  /** 局部别名避免每格调用 long 名（保持可读）。 */
-  function isTaskPending(task: TodoTask, date: string): boolean {
-    return taskOccursOn(task, date) && !isTaskDoneOnDate(task, date)
-  }
 
   // --- 快速添加 -------------------------------------------------------------
 
@@ -230,6 +294,12 @@ export function useTodoPanel() {
     editingId.value = task.id
     draft.value = taskToDraft(task)
     editorVisible.value = true
+  }
+
+  /** 按任务 id 打开编辑器（日历格胶囊只有 id）。 */
+  function openEditById(id: string): void {
+    const task = todoStore.tasks.find((t) => t.id === id)
+    if (task) openEdit(task)
   }
 
   function closeEditor(): void {
@@ -342,26 +412,24 @@ export function useTodoPanel() {
     todoStore.setPetScheduleMode(value)
   }
 
-  // --- 近期待办数量（面板头部徽标） ---------------------------------------------
-
-  const upcoming7Count = computed(() => todoStore.upcoming7Count)
-
   // --- 生命周期 --------------------------------------------------------------
+
+  let boardPollTimer: ReturnType<typeof setInterval> | null = null
 
   onMounted(() => {
     // 各窗口独立运行提醒结算（横幅只在本窗口展示）。
     todoStore.startReminderTicker()
     void refreshBoardVisible()
+    // 跨窗口开关 todo-board 后同步按钮状态（低频轮询，无压力）。
+    boardPollTimer = setInterval(() => void refreshBoardVisible(), 5000)
   })
 
-  // 跨窗口开关 todo-board 后同步按钮状态（简单轮询，低频无压力）。
-  let boardPollTimer: ReturnType<typeof setInterval> | null = null
-  boardPollTimer = setInterval(() => void refreshBoardVisible(), 5000)
-  if (typeof window !== 'undefined') {
-    window.addEventListener('unload', () => {
-      if (boardPollTimer) clearInterval(boardPollTimer)
-    })
-  }
+  onUnmounted(() => {
+    if (boardPollTimer) {
+      clearInterval(boardPollTimer)
+      boardPollTimer = null
+    }
+  })
 
   // 外部修改任务（如固定窗口勾选）时，编辑器若开着且编辑同一任务，关闭避免覆盖。
   watch(
@@ -389,8 +457,14 @@ export function useTodoPanel() {
     prevMonth,
     nextMonth,
     goToday,
-    colorDotsOf,
-    hasPendingOn,
+    chipsOf,
+    chipsByDate,
+    openEditById,
+    // 统计
+    allPendingCount,
+    todayPendingCount,
+    doneRecentCount,
+    reminderTaskCount,
     // 选中日
     selectedTasks,
     selectedPendingCount,
@@ -423,9 +497,6 @@ export function useTodoPanel() {
     // 宠物日程
     petScheduleMode,
     petScheduleOptions,
-    handlePetScheduleMode,
-    upcoming7Count,
-    // 工具
-    addDays
+    handlePetScheduleMode
   }
 }

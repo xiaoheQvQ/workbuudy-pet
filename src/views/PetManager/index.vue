@@ -8,6 +8,7 @@ import PetThumb from './PetThumb/PetThumb.vue'
 import PetDetailModal from './PetDetailModal/PetDetailModal.vue'
 import MarketPanel from './MarketPanel/MarketPanel.vue'
 import TodoPanel from './TodoPanel/TodoPanel.vue'
+import ProcessPanel from './ProcessPanel/ProcessPanel.vue'
 
 const {
   t,
@@ -312,6 +313,14 @@ const {
           {{ t('ui.todo.tab') }}
           <span class="pm-tab__count">{{ upcoming7Count }}</span>
         </button>
+        <button
+          type="button"
+          class="pm-tab"
+          :class="{ 'pm-tab--active': activeTab === 'process' }"
+          @click="activeTab = 'process'"
+        >
+          {{ t('ui.process.tab') }}
+        </button>
       </div>
 
       <!-- 我的宠物 -->
@@ -389,7 +398,10 @@ const {
       />
 
       <!-- 待办日历 -->
-      <TodoPanel v-else />
+      <TodoPanel v-else-if="activeTab === 'todo'" />
+
+      <!-- 进程管理 -->
+      <ProcessPanel v-else />
     </section>
 
     <!-- 详情弹窗 -->

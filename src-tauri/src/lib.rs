@@ -15,6 +15,7 @@ mod workbuddy;
 
 use commands::desktop_pet::{self, PET_WINDOW_LABEL};
 use commands::pet_market;
+use commands::process::{self, ProcessState};
 use commands::todo_board;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
@@ -77,6 +78,8 @@ pub fn run() {
     }
 
     builder
+        // 进程管理面板的常驻状态（sysinfo System 需跨调用复用，CPU 占用才有基线）。
+        .manage(ProcessState::default())
         .setup(|app| {
             // 0. 迁移旧版（改名前的 ZCodePet）数据目录：identifier 变更后 app_data_dir
             //    指向新目录，把旧目录的宠物数据补齐过来。仅在当前目录尚无宠物数据时生效，
@@ -164,6 +167,10 @@ pub fn run() {
             // WorkBuddy 免费模型 AI 台词
             desktop_pet::list_workbuddy_models,
             desktop_pet::generate_pet_line,
+            // 进程管理（枚举进程 + 端口占用 / 结束进程）
+            process::list_processes,
+            process::kill_process,
+            process::kill_processes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running workbuddy pet application");
