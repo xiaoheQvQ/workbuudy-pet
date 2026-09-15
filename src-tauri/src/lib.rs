@@ -161,6 +161,9 @@ pub fn run() {
             desktop_pet::get_workbuddy_db_path,
             desktop_pet::set_workbuddy_data_dir,
             desktop_pet::get_workbuddy_token_stats,
+            // WorkBuddy 免费模型 AI 台词
+            desktop_pet::list_workbuddy_models,
+            desktop_pet::generate_pet_line,
         ])
         .run(tauri::generate_context!())
         .expect("error while running workbuddy pet application");

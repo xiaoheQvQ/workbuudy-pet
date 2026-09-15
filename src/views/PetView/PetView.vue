@@ -25,6 +25,8 @@ const {
   handleOpenSettings,
   handleResetToCenter,
   handleToggleMovementMode,
+  handleToggleAiTalk,
+  handleAskAiNow,
   cyclePetScheduleMode,
   scheduleMenuLabel,
   scheduleTasks,
@@ -179,6 +181,22 @@ function hungerBarClass(hunger: number): string {
         @click="handleToggleMovementMode(); closeAllMenus()"
       >
         {{ petSettings.movementMode === 'fixed' ? '恢复自由漫游' : '固定位置' }}
+      </button>
+      <!-- AI 搭话（WorkBuddy 免费模型） -->
+      <button
+        type="button"
+        class="pet-menu__item"
+        :class="{ 'pet-menu__item--on': petSettings.aiTalkEnabled }"
+        @click="handleToggleAiTalk()"
+      >
+        {{ petSettings.aiTalkEnabled ? t('ui.ai.menuOn') : t('ui.ai.menuOff') }}
+      </button>
+      <button
+        type="button"
+        class="pet-menu__item"
+        @click="handleAskAiNow()"
+      >
+        {{ t('ui.ai.askNow') }}
       </button>
       <button
         type="button"

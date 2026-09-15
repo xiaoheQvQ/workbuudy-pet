@@ -126,6 +126,26 @@ export default {
   'ui.settings.title': '设置',
   'ui.settings.language': '语言',
 
+  // --- AI 搭话（ui.ai.*）-------------------------------------------------
+  'ui.ai.title': 'AI 搭话',
+  'ui.ai.hint': '复用 WorkBuddy 里配置的自定义（Custom）模型生成台词；任何失败都会自动回退到内置语录',
+  'ui.ai.model': '模型',
+  'ui.ai.modelDefault': '默认',
+  'ui.ai.modelDefaultNamed': '默认（{name}）',
+  'ui.ai.modelEmpty': '未在 WorkBuddy 中找到自定义（Custom）模型，请先在 WorkBuddy 里添加一个',
+  'ui.ai.modelLoadFailed': '读取模型列表失败：{error}',
+  'ui.ai.topic': '话题',
+  'ui.ai.topic.chat': '随口聊',
+  'ui.ai.topic.news': '今日播报',
+  'ui.ai.interval': '主动搭话',
+  'ui.ai.intervalOff': '不主动',
+  'ui.ai.intervalMinutes': '每 {minutes} 分钟',
+  'ui.ai.newsHint': '「今日播报」由模型基于自身知识讲述近期热点，不联网检索实时新闻',
+  'ui.ai.menuOn': 'AI 搭话：已开启',
+  'ui.ai.menuOff': 'AI 搭话：已关闭',
+  'ui.ai.askNow': '让 AI 说一句',
+  'ui.ai.contextTodos': '今天还有 {count} 条待办没做完',
+
   // --- 系统托盘（ui.tray.*）---------------------------------------------
   'ui.tray.toggle': '显示/隐藏宠物',
   'ui.tray.openManager': '打开管理窗口',

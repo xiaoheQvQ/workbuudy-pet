@@ -12,6 +12,7 @@
 //! 三个子模块均刻意与 `commands` 模块解耦，自行定义 `PET_WINDOW_LABEL` 常量，
 //! 避免跨模块循环依赖。
 
+pub mod ai;
 pub mod hook_server;
 pub mod link;
 pub mod models;

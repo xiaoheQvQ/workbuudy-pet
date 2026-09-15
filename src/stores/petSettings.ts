@@ -9,6 +9,8 @@
  *   - movementMode：漫游模式（'free' 自由漫游 / 'fixed' 固定位置不走步）
  *   - locale：界面语言（'zh-CN' | 'en-US'），驱动 vue-i18n 的 i18n.global.locale；
  *     运行时切换由集成代理在 PetManager 里 watch 该字段实现。
+ *   - aiTalkEnabled / aiModelId / aiTopic / aiIntervalMinutes：AI 搭话
+ *     （用 WorkBuddy 配置的免费模型生成宠物台词，见 services/workbuddyAi.ts）。
  */
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
@@ -19,6 +21,9 @@ const STORAGE_KEY = 'workbuddy-pet-settings'
 /** 漫游模式：'free' 自由走步 / 'fixed' 固定位置。 */
 export type MovementMode = 'free' | 'fixed'
 
+/** AI 搭话话题：'chat' 随口聊 / 'news' 今日播报。 */
+export type AiTopic = 'chat' | 'news'
+
 interface PetSettingsData {
   enabled: boolean
   activeId: string | null
@@ -26,6 +31,14 @@ interface PetSettingsData {
   scale: number
   movementMode: MovementMode
   locale: AppLocale
+  /** 是否启用 AI 搭话（关时只用内置固定语录）。 */
+  aiTalkEnabled: boolean
+  /** 使用的 WorkBuddy 模型 id；null = 用后端默认（models.json 第一个）。 */
+  aiModelId: string | null
+  /** AI 搭话话题。 */
+  aiTopic: AiTopic
+  /** 主动搭话间隔（分钟）；0 = 关闭定时主动搭话（仅悬停时说）。 */
+  aiIntervalMinutes: number
 }
 
 const DEFAULT_SETTINGS: PetSettingsData = {
@@ -34,7 +47,11 @@ const DEFAULT_SETTINGS: PetSettingsData = {
   alwaysOnTop: true,
   scale: 75,
   movementMode: 'free',
-  locale: 'zh-CN'
+  locale: 'zh-CN',
+  aiTalkEnabled: false,
+  aiModelId: null,
+  aiTopic: 'chat',
+  aiIntervalMinutes: 15
 }
 
 /** 从 localStorage 读取设置（容错：格式错误则用默认值）。 */
@@ -58,6 +75,10 @@ export const usePetSettingsStore = defineStore('petSettings', () => {
   const scale = ref(stored.scale)
   const movementMode = ref<MovementMode>(stored.movementMode)
   const locale = ref<AppLocale>(stored.locale)
+  const aiTalkEnabled = ref(stored.aiTalkEnabled)
+  const aiModelId = ref<string | null>(stored.aiModelId)
+  const aiTopic = ref<AiTopic>(stored.aiTopic)
+  const aiIntervalMinutes = ref(stored.aiIntervalMinutes)
 
   /**
    * 跨窗口同步标志：persist 写入 localStorage 时置 true，storage 事件处理函数
@@ -73,7 +94,11 @@ export const usePetSettingsStore = defineStore('petSettings', () => {
       alwaysOnTop: alwaysOnTop.value,
       scale: scale.value,
       movementMode: movementMode.value,
-      locale: locale.value
+      locale: locale.value,
+      aiTalkEnabled: aiTalkEnabled.value,
+      aiModelId: aiModelId.value,
+      aiTopic: aiTopic.value,
+      aiIntervalMinutes: aiIntervalMinutes.value
     }
     try {
       writing = true
@@ -102,6 +127,10 @@ export const usePetSettingsStore = defineStore('petSettings', () => {
       scale.value = data.scale
       movementMode.value = data.movementMode
       locale.value = data.locale
+      aiTalkEnabled.value = data.aiTalkEnabled
+      aiModelId.value = data.aiModelId
+      aiTopic.value = data.aiTopic
+      aiIntervalMinutes.value = data.aiIntervalMinutes
     })
   }
 
@@ -109,7 +138,21 @@ export const usePetSettingsStore = defineStore('petSettings', () => {
   const hasSelectedPet = (): boolean => activeId.value !== null
 
   // 任意字段变化自动持久化。
-  watch([enabled, activeId, alwaysOnTop, scale, movementMode, locale], persist)
+  watch(
+    [
+      enabled,
+      activeId,
+      alwaysOnTop,
+      scale,
+      movementMode,
+      locale,
+      aiTalkEnabled,
+      aiModelId,
+      aiTopic,
+      aiIntervalMinutes
+    ],
+    persist
+  )
 
   return {
     enabled,
@@ -118,6 +161,10 @@ export const usePetSettingsStore = defineStore('petSettings', () => {
     scale,
     movementMode,
     locale,
+    aiTalkEnabled,
+    aiModelId,
+    aiTopic,
+    aiIntervalMinutes,
     hasSelectedPet,
     persist
   }

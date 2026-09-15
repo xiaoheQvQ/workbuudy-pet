@@ -113,6 +113,26 @@ export default {
   'ui.settings.title': 'Settings',
   'ui.settings.language': 'Language',
 
+  // --- AI talk (ui.ai.*) -------------------------------------------------
+  'ui.ai.title': 'AI talk',
+  'ui.ai.hint': 'Reuses the custom (Custom) models configured in WorkBuddy to write lines; falls back to built-in quotes on any failure.',
+  'ui.ai.model': 'Model',
+  'ui.ai.modelDefault': 'Default',
+  'ui.ai.modelDefaultNamed': 'Default ({name})',
+  'ui.ai.modelEmpty': 'No custom (Custom) model found in WorkBuddy — add one there first.',
+  'ui.ai.modelLoadFailed': 'Failed to load models: {error}',
+  'ui.ai.topic': 'Topic',
+  'ui.ai.topic.chat': 'Small talk',
+  'ui.ai.topic.news': 'Briefing',
+  'ui.ai.interval': 'Speak up',
+  'ui.ai.intervalOff': 'Never',
+  'ui.ai.intervalMinutes': 'Every {minutes} min',
+  'ui.ai.newsHint': '"Briefing" is based on the model\'s own knowledge, not a live news feed.',
+  'ui.ai.menuOn': 'AI talk: on',
+  'ui.ai.menuOff': 'AI talk: off',
+  'ui.ai.askNow': 'Ask AI to speak',
+  'ui.ai.contextTodos': '{count} todos still pending today',
+
   // --- System tray (ui.tray.*) ------------------------------------------
   'ui.tray.toggle': 'Show/hide pet',
   'ui.tray.openManager': 'Open manager',

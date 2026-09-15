@@ -2,6 +2,7 @@
 //
 // 管理本地持久化目录中已安装的宠物（内置 4 只 + 用户导入），并提供创建/显示/隐藏一个
 // 独立、透明、置顶、无边框的桌面宠物悬浮窗口（OS 级），让宠物浮在屏幕上。
+// 另含 WorkBuddy 联动（hook）、token 统计与免费模型 AI 台词三条集成链路。
 //
 // 约定遵循 tauri-harness 后端规范：导入 → 数据结构(camelCase) → 私有辅助 → #[tauri::command]，
 // 命令返回 Result<T, String>，禁止 unwrap()/expect()。
@@ -1035,6 +1036,43 @@ pub fn get_workbuddy_token_stats(
     let db_path = crate::workbuddy::stats::resolve_db_path(&app)
         .ok_or_else(|| "未检测到 WorkBuddy 数据目录".to_string())?;
     crate::workbuddy::stats::query_today_stats(&db_path).map(Some)
+}
+
+// --- 命令：WorkBuddy 免费模型 AI 台词 -------------------------------------
+
+/// 列出 WorkBuddy 已配置的模型（`~/.workbuddy/models.json`，脱敏不含 apiKey）。
+///
+/// 供管理窗口的「AI 搭话」设置区做模型下拉；未配置模型时返回 Err，前端提示用户。
+#[tauri::command]
+pub fn list_workbuddy_models(
+) -> Result<Vec<crate::workbuddy::ai::WorkBuddyModelInfo>, String> {
+    crate::workbuddy::ai::list_models()
+}
+
+/// 用 WorkBuddy 配置的免费模型生成一句宠物台词。
+///
+/// 直接以 `POST {model.url}` 调 OpenAI 兼容的 chat/completions，复用 WorkBuddy 的
+/// apiKey（只读，不出后端）。失败返回 Err，由前端回退到内置固定语录。
+///
+/// # 参数
+/// - `model_id`：模型 id；None / 不存在时用第一个可用模型。
+/// - `topic`：`"chat"`（随口搭话，默认）或 `"news"`（今日播报）。
+/// - `locale`：`"zh-CN"` / `"en-US"`，决定台词语言。
+/// - `context`：可选的现场上下文（今日待办等），拼进提示词。
+#[tauri::command]
+pub async fn generate_pet_line(
+    model_id: Option<String>,
+    topic: Option<String>,
+    locale: Option<String>,
+    context: Option<String>,
+) -> Result<String, String> {
+    crate::workbuddy::ai::generate_line(
+        model_id.as_deref(),
+        topic.as_deref(),
+        locale.as_deref(),
+        context.as_deref(),
+    )
+    .await
 }
 
 #[cfg(test)]

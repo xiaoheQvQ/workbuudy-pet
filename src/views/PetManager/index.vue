@@ -31,6 +31,15 @@ const {
   workbuddyDbPath,
   workbuddyDataDirInput,
   workbuddyDataDirSaving,
+  aiModels,
+  aiModelError,
+  aiModelOptions,
+  aiTopicOptions,
+  aiIntervalOptions,
+  handleToggleAiTalk,
+  handleAiModelChange,
+  handleAiTopicChange,
+  handleAiIntervalChange,
   handleToggleEnabled,
   openLocalDetail,
   handleDetailUse,
@@ -121,6 +130,11 @@ const {
             class="pm-settings__chip pm-settings__chip--status"
             :class="{ 'pm-settings__chip--on': workbuddyLinked }"
           >{{ workbuddyLinked ? t('ui.workbuddy.linked') : t('ui.workbuddy.unlinked') }}</span>
+          <!-- 收起状态下也能看到 AI 搭话是否已开启 -->
+          <span
+            class="pm-settings__chip pm-settings__chip--status"
+            :class="{ 'pm-settings__chip--on': petSettings.aiTalkEnabled }"
+          >{{ t('ui.ai.title') }}</span>
         </span>
         <span class="pm-settings__chevron">⌄</span>
       </button>
@@ -203,6 +217,63 @@ const {
               @click="handleSetWorkBuddyDataDir"
             >{{ t('ui.stats.dataDirApply') }}</n-button>
           </div>
+        </div>
+
+        <!-- AI 搭话：复用 WorkBuddy 已配置的免费模型生成宠物台词 -->
+        <div class="pm-setting pm-setting--wide">
+          <div class="pm-setting__head">
+            <span class="pm-setting__label">{{ t('ui.ai.title') }}</span>
+            <n-switch
+              :value="petSettings.aiTalkEnabled"
+              :round="false"
+              size="small"
+              @update:value="handleToggleAiTalk"
+            />
+          </div>
+          <p class="pm-setting__hint">{{ t('ui.ai.hint') }}</p>
+
+          <div class="pm-ai-grid">
+            <label class="pm-ai-field">
+              <span class="pm-ai-field__label">{{ t('ui.ai.model') }}</span>
+              <n-select
+                :value="petSettings.aiModelId ?? ''"
+                :options="aiModelOptions"
+                size="small"
+                @update:value="handleAiModelChange"
+              />
+            </label>
+            <label class="pm-ai-field">
+              <span class="pm-ai-field__label">{{ t('ui.ai.topic') }}</span>
+              <n-select
+                :value="petSettings.aiTopic"
+                :options="aiTopicOptions"
+                size="small"
+                @update:value="handleAiTopicChange"
+              />
+            </label>
+            <label class="pm-ai-field">
+              <span class="pm-ai-field__label">{{ t('ui.ai.interval') }}</span>
+              <n-select
+                :value="String(petSettings.aiIntervalMinutes)"
+                :options="aiIntervalOptions"
+                size="small"
+                @update:value="handleAiIntervalChange"
+              />
+            </label>
+          </div>
+
+          <p
+            v-if="aiModelError"
+            class="pm-setting__hint pm-setting__hint--warn"
+          >{{ aiModelError }}</p>
+          <p
+            v-else-if="aiModels.length === 0"
+            class="pm-setting__hint pm-setting__hint--warn"
+          >{{ t('ui.ai.modelEmpty') }}</p>
+          <p
+            v-else-if="petSettings.aiTopic === 'news'"
+            class="pm-setting__hint"
+          >{{ t('ui.ai.newsHint') }}</p>
         </div>
       </div>
     </section>

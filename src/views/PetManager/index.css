@@ -435,6 +435,37 @@
   max-width: 100%;
 }
 
+/* 需要用户关注的提示（未检测到模型 / 读取失败） */
+.pm-setting__hint--warn {
+  color: #f0a020;
+}
+
+/* AI 搭话：模型 / 话题 / 间隔三个下拉并排 */
+.pm-ai-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.pm-ai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pm-ai-field__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 720px) {
+  .pm-ai-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* 数据目录输入框 + 应用按钮行 */
 .pm-datadir-input {
   display: flex;

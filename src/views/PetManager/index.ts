@@ -17,6 +17,8 @@ import { useDesktopPetStore } from '@/stores/desktopPet'
 import { usePetMarketStore } from '@/stores/petMarket'
 import { useTodoScheduleStore } from '@/stores/todoSchedule'
 import { toLocalAssetUrl } from '@/services/desktopPet'
+import { listWorkBuddyModels } from '@/services/workbuddyAi'
+import type { WorkBuddyModelInfo } from '@/services/workbuddyAi'
 import { useAppUpdate } from '@/composables/useAppUpdate'
 import type { AppLocale } from '@/locales'
 import { supportedLocales } from '@/locales'
@@ -97,6 +99,85 @@ export function usePetManager() {
   const SCALE_MIN = 50
   const SCALE_MAX = 125
   const SCALE_STEP = 5
+
+  // --- AI 搭话（WorkBuddy 免费模型） ----------------------------------------
+  /** WorkBuddy 已配置的模型（from ~/.workbuddy/models.json，脱敏）。 */
+  const aiModels = ref<WorkBuddyModelInfo[]>([])
+  /** 模型列表读取失败原因（展示给用户，如未装 WorkBuddy）。 */
+  const aiModelError = ref<string | null>(null)
+
+  /** 后端在「默认」时实际会用的模型名（用于下拉首项文案，让默认值是可见的）。 */
+  const defaultAiModelName = computed(() => aiModels.value.find((m) => m.isDefault)?.name ?? '')
+
+  /**
+   * 模型下拉选项：首项为「默认」（后端按渠道偏好挑选，不一定是列表第一个）。
+   *
+   * 后端只返回 Custom 渠道的模型（见 workbuddy/ai.rs 的 is_custom_model），
+   * 故这里直接用模型名做 label，不再拼 vendor 后缀。
+   */
+  const aiModelOptions = computed<Option[]>(() => [
+    {
+      value: '',
+      label: defaultAiModelName.value
+        ? t('ui.ai.modelDefaultNamed', { name: defaultAiModelName.value })
+        : t('ui.ai.modelDefault')
+    },
+    ...aiModels.value.map((m) => ({ value: m.id, label: m.name }))
+  ])
+
+  /** 话题下拉选项。 */
+  const aiTopicOptions = computed<Option[]>(() => [
+    { value: 'chat', label: t('ui.ai.topic.chat') },
+    { value: 'news', label: t('ui.ai.topic.news') }
+  ])
+
+  /** 主动搭话间隔选项（分钟）；0 = 不主动搭话（仅在悬停时说）。 */
+  const AI_INTERVAL_CHOICES = [0, 5, 10, 15, 30, 60]
+  const aiIntervalOptions = computed<Option[]>(() =>
+    AI_INTERVAL_CHOICES.map((minutes) => ({
+      value: String(minutes),
+      label: minutes <= 0 ? t('ui.ai.intervalOff') : t('ui.ai.intervalMinutes', { minutes })
+    }))
+  )
+
+  /** 拉取 WorkBuddy 模型列表（失败只记原因，不影响设置页其它功能）。 */
+  async function loadAiModels(): Promise<void> {
+    try {
+      aiModels.value = await listWorkBuddyModels()
+      aiModelError.value = null
+    } catch (e) {
+      aiModels.value = []
+      aiModelError.value = t('ui.ai.modelLoadFailed', {
+        error: e instanceof Error ? e.message : String(e)
+      })
+    }
+  }
+
+  /** 打开/关闭 AI 搭话；首次开启时顺手刷新一次模型列表（用户可能刚在 WorkBuddy 里加过）。 */
+  function handleToggleAiTalk(enabled: boolean): void {
+    petSettings.aiTalkEnabled = enabled
+    if (enabled) {
+      void loadAiModels()
+    }
+  }
+
+  /** 选择模型（空串 = 默认，落库为 null）。 */
+  function handleAiModelChange(value: string): void {
+    petSettings.aiModelId = value ? value : null
+  }
+
+  /** 切换话题（下拉值是字符串，非法值一律按「随口聊」处理）。 */
+  function handleAiTopicChange(value: string): void {
+    petSettings.aiTopic = value === 'news' ? 'news' : 'chat'
+  }
+
+  /** 切换主动搭话间隔（下拉值是字符串，转成数字存储）。 */
+  function handleAiIntervalChange(value: string): void {
+    const minutes = Number.parseInt(value, 10)
+    if (Number.isFinite(minutes) && minutes >= 0) {
+      petSettings.aiIntervalMinutes = minutes
+    }
+  }
 
   // --- handlers：开关 ----------------------------------------------------
 
@@ -378,6 +459,9 @@ export function usePetManager() {
       workbuddyDataDirMissing.value = true
     }
 
+    // 拉取 WorkBuddy 模型列表（AI 搭话用；失败只提示，不阻断）。
+    await loadAiModels()
+
     await desktopPetStore.loadLocalPets()
 
     // 静默检测应用更新（失败不影响主流程；有新版本时顶部显示下载按钮）。
@@ -443,6 +527,16 @@ export function usePetManager() {
     workbuddyDataDirInput,
     workbuddyDataDirMissing,
     workbuddyDataDirSaving,
+    // AI talk
+    aiModels,
+    aiModelError,
+    aiModelOptions,
+    aiTopicOptions,
+    aiIntervalOptions,
+    handleToggleAiTalk,
+    handleAiModelChange,
+    handleAiTopicChange,
+    handleAiIntervalChange,
     // handlers
     handleToggleEnabled,
     handleToggleAlwaysOnTop,

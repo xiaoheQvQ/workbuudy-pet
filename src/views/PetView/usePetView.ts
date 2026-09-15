@@ -23,6 +23,7 @@ import type { LocalPetInfo } from '@/types/desktopPet'
 import type { TokenStats } from '@/types/tokenStats'
 import { chunkMessage, pickTimeBasedMessage } from '@/modules/desktopPet/chatSim'
 import { pickTokenCommentary } from '@/modules/desktopPet/tokenCommentary'
+import { requestAiPetLine } from '@/services/workbuddyAi'
 import { useWorkBuddyPetEvents } from '@/composables/useWorkBuddyPetEvents'
 
 /**
@@ -66,6 +67,12 @@ const IDLE_CHECK_INTERVAL_MS = 5_000
 const TOKEN_BUBBLE_LINGER_MS = 5000
 // 定时自动展示 token 用量的间隔（ms，每 5 分钟）。
 const TOKEN_AUTO_INTERVAL_MS = 5 * 60 * 1000
+
+// --- AI 搭话（WorkBuddy 免费模型） ----------------------------------------
+// 两次 AI 生成之间的冷却（ms）：鼠标反复蹭宠物时不至于疯狂调模型。
+const AI_COOLDOWN_MS = 30_000
+// 主动搭话的检查间隔（ms）：实际触发间隔由设置里的 aiIntervalMinutes 决定。
+const AI_AUTO_CHECK_MS = 30_000
 
 /** 格式化 token 数为简短可读形式（与 useWorkBuddyPetEvents 一致）。 */
 function formatTokens(n: number): string {
@@ -241,6 +248,19 @@ export function usePetView() {
   let tokenBubbleTimer: ReturnType<typeof setTimeout> | null = null
   // 定时自动展示 token 用量的轮询计时器。
   let tokenAutoTimer: ReturnType<typeof setInterval> | null = null
+
+  // --- AI 搭话状态 ------------------------------------------------------
+  // 上次发起 AI 生成的时间（冷却用，悬停场景）。
+  let lastAiAt = 0
+  // 上次主动搭话的时间（间隔用，定时场景）。
+  let lastAutoSpeakAt = Date.now()
+  // 请求序号：会话结束 / 被抢占时自增，令迟到的 AI 响应被丢弃（避免气泡"诈尸"）。
+  let aiRequestSeq = 0
+  // 主动搭话检查计时器。
+  let aiAutoTimer: ReturnType<typeof setInterval> | null = null
+  // 最近说过的 AI 台词（避免反复说同一句）。
+  const recentAiLines: string[] = []
+  const RECENT_AI_LINES_MAX = 6
 
   /** 解析当前激活宠物的精灵图 URL。 */
   async function resolveActiveSrc(): Promise<{ id: string; src: string } | null> {
@@ -542,8 +562,8 @@ export function usePetView() {
     const app = petApp.value
     if (!app) return
     const bounds = app.getPetBounds()
-    // 菜单高度估算：养成状态条 + 3 个食物项 + 原有 5 项。
-    const pos = computeMenuPosition(bounds, window.innerWidth, window.innerHeight, 340)
+    // 菜单高度估算：养成状态条 + 3 个食物项 + 原有 7 项 + AI 搭话 2 项。
+    const pos = computeMenuPosition(bounds, window.innerWidth, window.innerHeight, 400)
     contextMenuX.value = pos.x
     contextMenuY.value = pos.y
     contextMenuVisible.value = true
@@ -598,6 +618,35 @@ export function usePetView() {
    */
   function handleToggleMovementMode(): void {
     petSettings.movementMode = petSettings.movementMode === 'fixed' ? 'free' : 'fixed'
+  }
+
+  /**
+   * 右键菜单：切换 AI 搭话开关。
+   *
+   * 只写 petSettings（store 自动持久化 + 跨窗口同步）；悬停与定时逻辑均实时读该字段，
+   * 故无需额外联动。开启瞬间若设置页还没选过模型，后端会自动兜底到 models.json 第一个。
+   */
+  function handleToggleAiTalk(): void {
+    petSettings.aiTalkEnabled = !petSettings.aiTalkEnabled
+    // 刚开启时重置间隔计时，避免"开完立刻又不说"的困惑。
+    lastAutoSpeakAt = Date.now()
+    closeAllMenus()
+  }
+
+  /**
+   * 右键菜单：立刻让 AI 说一句（无视开关与冷却，便于即时体验 / 验证配置）。
+   * 请求失败时与其它路径一致地回退内置时段语录。
+   */
+  async function handleAskAiNow(): Promise<void> {
+    closeAllMenus()
+    if (workbuddyEvents.isActive.value) return
+    const app = petApp.value
+    if (!app) return
+    lastAiAt = 0
+    stopChatTimers()
+    app.showChat()
+    const text = await streamAiLine()
+    if (text) scheduleBubbleHide(text)
   }
 
   // --- 拖拽 / 单击 / 右键 ------------------------------------------------
@@ -851,16 +900,11 @@ export function usePetView() {
 
   // --- 模拟 SSE 对话 -----------------------------------------------------
 
-  /** 鼠标悬停到宠物时启动一段模拟流式对话（打字机）。每次悬停都触发。 */
-  function startSimulatedChat(): void {
-    // 真实 WorkBuddy 通知优先：进行中时让出 ChatBubble，不打 canned 闲聊。
-    if (workbuddyEvents.isActive.value) return
+  /** 把一段完整台词按打字机节奏追加进气泡（每次追加 chunkMessage 切出的一个 token）。 */
+  function streamChatLine(line: string): void {
     const app = petApp.value
     if (!app) return
-    stopChatTimers()
-    app.showChat()
-
-    const chunks = chunkMessage(pickTimeBasedMessage())
+    const chunks = chunkMessage(line)
     let index = 0
     chatTimer = setInterval(() => {
       if (index >= chunks.length) {
@@ -872,12 +916,91 @@ export function usePetView() {
     }, SIM_TOKEN_INTERVAL_MS)
   }
 
+  /** 排定气泡淡出：基础停留 + 打字机的实际耗时。 */
+  function scheduleBubbleHide(line: string): void {
+    const linger = TOKEN_BUBBLE_LINGER_MS + chunkMessage(line).length * SIM_TOKEN_INTERVAL_MS
+    if (tokenBubbleTimer) {
+      clearTimeout(tokenBubbleTimer)
+    }
+    tokenBubbleTimer = setTimeout(() => {
+      petApp.value?.hideChat()
+      tokenBubbleTimer = null
+    }, linger)
+  }
+
+  /** 组装 AI 提示词的「现场上下文」（今日待办），让台词更贴合当下；无内容返回 null。 */
+  function buildAiContext(): string | null {
+    const todayPending = todoStore.upcomingPending(1).length
+    if (todayPending > 0) {
+      return i18nT('ui.ai.contextTodos', { count: todayPending })
+    }
+    return null
+  }
+
+  /** 记忆最近几句 AI 台词：撞车时改用内置时段语录，避免宠物"复读"。 */
+  function dedupeAiLine(line: string): string {
+    if (recentAiLines.includes(line)) return pickTimeBasedMessage()
+    recentAiLines.push(line)
+    if (recentAiLines.length > RECENT_AI_LINES_MAX) recentAiLines.shift()
+    return line
+  }
+
+  /**
+   * 请求一句 AI 台词并流式播放。
+   *
+   * 复用 WorkBuddy 配置的免费模型（见 services/workbuddyAi.ts）；请求失败 / 超时
+   * 时静默回退到内置时段语录，保证宠物任何时候都有话说。
+   *
+   * @returns 实际播放的台词；会话已被结束（鼠标移出 / 被抢占）时返回 null，调用方不再安排淡出。
+   */
+  async function streamAiLine(): Promise<string | null> {
+    lastAiAt = Date.now()
+    const seq = ++aiRequestSeq
+    const line = await requestAiPetLine({
+      modelId: petSettings.aiModelId,
+      topic: petSettings.aiTopic,
+      locale: petSettings.locale,
+      context: buildAiContext()
+    })
+
+    // 期间会话已结束（鼠标移出 / token 气泡或真实通知接管）→ 丢弃这次响应，避免气泡"诈尸"。
+    if (seq !== aiRequestSeq) return null
+    if (workbuddyEvents.isActive.value) return null
+
+    const text = line ? dedupeAiLine(line) : pickTimeBasedMessage()
+    streamChatLine(text)
+    return text
+  }
+
+  /**
+   * 鼠标悬停到宠物时启动一段对话。
+   *
+   * AI 搭话开启且过了冷却 → 交给模型生成台词（生成期间气泡显示闪烁光标作为「正在想」的反馈）；
+   * 否则沿用内置时段语录（零延迟、离线可用）。
+   */
+  function startSimulatedChat(): void {
+    // 真实 WorkBuddy 通知优先：进行中时让出 ChatBubble，不打闲聊。
+    if (workbuddyEvents.isActive.value) return
+    const app = petApp.value
+    if (!app) return
+    stopChatTimers()
+    app.showChat()
+
+    if (petSettings.aiTalkEnabled && Date.now() - lastAiAt >= AI_COOLDOWN_MS) {
+      void streamAiLine()
+      return
+    }
+    streamChatLine(pickTimeBasedMessage())
+  }
+
   /** 鼠标移出宠物：停止流式，短暂停留后淡出隐藏。 */
   function stopSimulatedChat(): void {
     // 真实通知进行中时，ChatBubble 由通知驱动器托管，这里不收尾以免误关。
     if (workbuddyEvents.isActive.value) return
     const app = petApp.value
     if (!app) return
+    // 作废在途的 AI 请求：否则迟到的响应会在鼠标移出后重新弹气泡。
+    aiRequestSeq += 1
     if (chatTimer) {
       clearInterval(chatTimer)
       chatTimer = null
@@ -898,6 +1021,8 @@ export function usePetView() {
   }
 
   function stopChatTimers(): void {
+    // 作废在途 AI 请求（新对话 / token 气泡 / 喂养气泡接管时丢弃旧响应）。
+    aiRequestSeq += 1
     if (chatTimer) {
       clearInterval(chatTimer)
       chatTimer = null
@@ -909,6 +1034,45 @@ export function usePetView() {
     if (tokenBubbleTimer) {
       clearTimeout(tokenBubbleTimer)
       tokenBubbleTimer = null
+    }
+  }
+
+  // --- AI 主动搭话 -------------------------------------------------------
+
+  /**
+   * 定时主动搭话：到间隔后说一句 AI 台词，说完停留片刻再淡出。
+   *
+   * 与其它气泡/交互互斥（真实通知 / 悬停中 / 拖拽 / 菜单打开时不打扰），
+   * 避免打断用户正在进行的对话。
+   */
+  async function maybeAutoSpeak(): Promise<void> {
+    if (!petSettings.aiTalkEnabled) return
+    const minutes = petSettings.aiIntervalMinutes
+    if (minutes <= 0) return
+    if (Date.now() - lastAutoSpeakAt < minutes * 60_000) return
+    if (workbuddyEvents.isActive.value || hovering) return
+    if (pointerArmed.value || dragging.value || actionMenuVisible.value || contextMenuVisible.value) return
+    const app = petApp.value
+    if (!app) return
+
+    lastAutoSpeakAt = Date.now()
+    stopChatTimers()
+    app.showChat()
+    const text = await streamAiLine()
+    if (text) scheduleBubbleHide(text)
+  }
+
+  function startAiAutoTimer(): void {
+    if (aiAutoTimer) return
+    aiAutoTimer = setInterval(() => {
+      void maybeAutoSpeak()
+    }, AI_AUTO_CHECK_MS)
+  }
+
+  function stopAiAutoTimer(): void {
+    if (aiAutoTimer) {
+      clearInterval(aiAutoTimer)
+      aiAutoTimer = null
     }
   }
 
@@ -939,6 +1103,7 @@ export function usePetView() {
     startClickThroughLoop()
     startIdleChecker()
     startTokenAutoTimer()
+    startAiAutoTimer()
     // 待办日程：提醒结算定时器 + 浮层跟随宠物。
     todoStore.startReminderTicker()
     startScheduleFollow()
@@ -979,6 +1144,7 @@ export function usePetView() {
     stopClickThroughLoop()
     stopIdleChecker()
     stopTokenAutoTimer()
+    stopAiAutoTimer()
     stopScheduleFollow()
     stopChatTimers()
     desktopPetStore.stopPetSwitchListener()
@@ -1013,6 +1179,8 @@ export function usePetView() {
     handleOpenSettings,
     handleResetToCenter,
     handleToggleMovementMode,
+    handleToggleAiTalk,
+    handleAskAiNow,
     cyclePetScheduleMode,
     scheduleMenuLabel,
     scheduleTasks,
