@@ -7,7 +7,7 @@
  */
 export default {
   // --- Notification bubbles (notif.*) -----------------------------------
-  'notif.session.greet': "Hi! I'm your coding buddy 👋",
+  'notif.session.greet': "Hi! I'm your desktop buddy 👋",
   'notif.user.thinking': 'Thinking…',
 
   'notif.tool.start': 'Running {tool}…',
@@ -35,7 +35,7 @@ export default {
 
   // --- Manager window title (ui.app.*) ----------------------------------
   'ui.app.title': 'WorkBuddy-PET Desktop Pet',
-  'ui.app.subtitle': 'Pick a little buddy to keep you company while you code',
+  'ui.app.subtitle': 'Pick a little buddy to keep you company',
 
   // --- Pet management (ui.pet.*) ----------------------------------------
   'ui.pet.enable': 'Enable desktop pet',

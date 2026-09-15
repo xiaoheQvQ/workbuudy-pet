@@ -20,7 +20,7 @@
  */
 export default {
   // --- 通知气泡（notif.*）------------------------------------------------
-  'notif.session.greet': '嗨！我是你的编程伙伴 👋',
+  'notif.session.greet': '嗨！我是你的桌面小伙伴 👋',
   'notif.user.thinking': '思考中…',
 
   'notif.tool.start': '正在 {tool}…',
@@ -48,7 +48,7 @@ export default {
 
   // --- 管理窗口标题（ui.app.*）------------------------------------------
   'ui.app.title': 'WorkBuddy-PET 桌面宠物',
-  'ui.app.subtitle': '选一只陪伴你写代码的小家伙',
+  'ui.app.subtitle': '选一只陪伴你的小家伙',
 
   // --- 宠物管理（ui.pet.*）----------------------------------------------
   'ui.pet.enable': '启用桌面宠物',

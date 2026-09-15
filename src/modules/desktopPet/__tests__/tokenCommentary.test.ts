@@ -40,14 +40,14 @@ describe('resolveTier', () => {
 describe('pickTokenCommentary', () => {
   it('picks a rookie phrase for tiny usage', () => {
     // 菜鸡档标志性词（不绑定具体索引，文案微调不致测试脆裂）。
-    const ROOKIE_KW = ['菜', '摸鱼', '睡着', '就这', '键盘', '网断', '省钱', '充点值', '发呆', '睡醒', '热身', '鸡腿']
+    const ROOKIE_KW = ['闲', '偷懒', '睡着', '就这', '网断', '省钱', '充点值', '发呆', '睡醒', '热身', '长草']
     const phrase = pickTokenCommentary(800, 3, constRng(0.5))
     const hit = ROOKIE_KW.some((kw) => phrase.includes(kw))
     expect(hit).toBe(true)
   })
 
   it('picks a titan phrase for massive usage', () => {
-    const TITAN_KW = ['牛逼', '大佬', '地球', '肝帝', '服务器', '神', '键盘', '离谱', '敲穿', '罢工', '怪兽', '膝盖']
+    const TITAN_KW = ['厉害', '大佬', '地球', '卷王', '服务器', '神', '火力', '离谱', '额度', '罢工', '怪兽', '膝盖']
     const phrase = pickTokenCommentary(200_000_000, 600, constRng(0))
     const hit = TITAN_KW.some((kw) => phrase.includes(kw))
     expect(hit).toBe(true)
@@ -78,7 +78,7 @@ describe('pickTokenCommentary', () => {
 
   it('promotes low-token-but-high-calls to titan commentary', () => {
     // 调用次数 600 直通大佬档，即便 token 很少。
-    const TITAN_KW = ['牛逼', '大佬', '地球', '肝帝', '服务器', '神', '键盘', '离谱', '敲穿', '罢工', '怪兽', '膝盖']
+    const TITAN_KW = ['厉害', '大佬', '地球', '卷王', '服务器', '神', '火力', '离谱', '额度', '罢工', '怪兽', '膝盖']
     const phrase = pickTokenCommentary(2_000, 600, constRng(0))
     const hit = TITAN_KW.some((kw) => phrase.includes(kw))
     expect(hit).toBe(true)

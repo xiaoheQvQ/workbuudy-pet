@@ -62,7 +62,7 @@ const {
     <header class="pm-header">
       <div class="pm-header__brand">
         <h1 class="pm-title">桌面宠物</h1>
-        <p class="pm-subtitle">选一只陪伴你写代码的小家伙</p>
+        <p class="pm-subtitle">选一只陪伴你的小家伙</p>
       </div>
       <div class="pm-header__actions">
         <!-- 有新版本时显示下载按钮（应用内更新，安装后自动重启） -->

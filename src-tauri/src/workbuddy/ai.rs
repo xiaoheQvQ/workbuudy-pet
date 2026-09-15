@@ -245,16 +245,16 @@ fn pick_model<'a>(models: &'a [RawModel], model_id: Option<&str>) -> Result<&'a 
 /// 构造 system 提示词（约束角色与输出格式）。
 pub fn build_system_prompt(topic: Topic, lang: Lang) -> String {
     match (topic, lang) {
-        (Topic::Chat, Lang::Zh) => "你是一只趴在程序员桌面上的小宠物，说话俏皮、口语化、偶尔自嘲，像个爱吐槽的搭子。\
+        (Topic::Chat, Lang::Zh) => "你是一只趴在主人桌面上的小宠物，说话俏皮、口语化、偶尔自嘲，像个爱陪人聊天的搭子。\
              你只输出你要说的那一句话本身：不要解释、不要加引号、不要加「宠物：」之类的前缀、不要换行、不要用 markdown。"
             .to_string(),
-        (Topic::News, Lang::Zh) => "你是一只趴在程序员桌面上的小宠物，负责给主人播报。\
+        (Topic::News, Lang::Zh) => "你是一只趴在主人桌面上的小宠物，负责给主人播报。\
              你只输出播报内容本身：不要解释、不要加引号、不要加序号或前缀、不要换行、不要用 markdown。"
             .to_string(),
-        (Topic::Chat, Lang::En) => "You are a tiny pet living on a programmer's desktop. You speak playfully, casually and a little sarcastic. \
+        (Topic::Chat, Lang::En) => "You are a tiny pet living on your owner's desktop. You speak playfully, casually and a little sarcastic. \
              Output ONLY the single sentence you want to say: no explanation, no quotes, no prefix like \"Pet:\", no line breaks, no markdown."
             .to_string(),
-        (Topic::News, Lang::En) => "You are a tiny pet living on a programmer's desktop, giving your owner a short briefing. \
+        (Topic::News, Lang::En) => "You are a tiny pet living on your owner's desktop, giving your owner a short briefing. \
              Output ONLY the briefing itself: no explanation, no quotes, no numbering or prefix, no line breaks, no markdown."
             .to_string(),
     }
@@ -281,24 +281,25 @@ pub fn build_user_prompt(
         (Topic::Chat, Lang::Zh) => format!(
             "现在是 {date_line}。{ctx_line}\n\
              请说一句 15~40 字的中文短句，像随口跟主人搭话一样。\
-             不要说烂大街的问候语，可以吐槽工作、关心主人、聊点小情绪或有趣的碎碎念。"
+             不要说烂大街的问候语，可以关心主人的日常、聊聊天气心情，\
+             或分享一点有趣的生活小事。"
         ),
         (Topic::News, Lang::Zh) => format!(
             "现在是 {date_line}。{ctx_line}\n\
-             请说一条你确实知道的、近期真实发生的科技或互联网领域热点（一句话，20~60 字），\
+             请说一条你确实知道的、近期真实发生的趣闻或热点（一句话，20~60 字），\
              用宠物播报的口吻说出来。如果记不清具体时间和细节，就不要编造日期和数字，\
-             宁可换一条你有把握的行业动态或有趣的事实。"
+             宁可换一条你有把握的动态或有趣的事实。"
         ),
         (Topic::Chat, Lang::En) => format!(
             "It is now {date_line}.{ctx_line}\n\
              Say one sentence of 10~30 words, like casually chatting with your owner. \
-             Avoid generic greetings; you may complain about work, show care, or share a random thought."
+             Avoid generic greetings; you may ask about their day, comment on the weather or mood, or share a random thought."
         ),
         (Topic::News, Lang::En) => format!(
             "It is now {date_line}.{ctx_line}\n\
-             Give one recent real tech or internet headline you actually know (one sentence, 15~40 words), \
+             Give one recent real headline or fun fact you actually know (one sentence, 15~40 words), \
              spoken in the voice of a pet news anchor. If you are unsure about the exact date or details, do NOT invent them — \
-             pick an industry development or fun fact you are confident about instead."
+             pick a story or fun fact you are confident about instead."
         ),
     }
 }
@@ -564,7 +565,7 @@ mod tests {
 
     #[test]
     fn sanitize_takes_first_non_empty_line_and_collapses_whitespace() {
-        assert_eq!(sanitize_line("嗯…\n\n  那就写代码吧  "), "嗯…");
+        assert_eq!(sanitize_line("嗯…\n\n  那就先休息吧  "), "嗯…");
         assert_eq!(sanitize_line("哈哈   你   看"), "哈哈 你 看");
     }
 
