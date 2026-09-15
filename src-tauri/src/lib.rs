@@ -15,6 +15,7 @@ mod workbuddy;
 
 use commands::desktop_pet::{self, PET_WINDOW_LABEL};
 use commands::pet_market;
+use commands::todo_board;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
@@ -122,7 +123,7 @@ pub fn run() {
             // 这样关掉任一可见窗口都不会退出应用，进程驻留托盘直至用户点击退出。
             if let WindowEvent::CloseRequested { api, .. } = event {
                 match window.label() {
-                    "pet" | "main" => {
+                    "pet" | "main" | "todo-board" => {
                         api.prevent_close();
                         let _ = window.hide();
                     }
@@ -147,6 +148,11 @@ pub fn run() {
             desktop_pet::set_pet_always_on_top,
             // 多屏漫游：跨屏时迁移窗口到目标显示器
             desktop_pet::move_pet_window_to_monitor,
+            // 待办「固定到桌面」窗口
+            todo_board::show_todo_board_window,
+            todo_board::hide_todo_board_window,
+            todo_board::toggle_todo_board_window,
+            todo_board::is_todo_board_visible,
             // WorkBuddy hook 联动
             desktop_pet::link_workbuddy,
             desktop_pet::get_workbuddy_link_status,

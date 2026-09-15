@@ -5,13 +5,17 @@
  *   - settingsStore → petSettingsStore（轻量 localStorage 持久化）
  *   - "打开设置"改为 emit 事件 + 聚焦管理窗口（不再依赖 ui store）
  */
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/core'
 import { usePetSettingsStore } from '@/stores/petSettings'
 import { useDesktopPetStore } from '@/stores/desktopPet'
 import { useWindowManagerStore } from '@/stores/windowManager'
+import { usePetCareStore } from '@/stores/petCare'
+import { useTodoScheduleStore } from '@/stores/todoSchedule'
+import { PET_FOODS, bondLevelKey } from '@/types/petCare'
+import type { PetScheduleMode } from '@/types/todoSchedule'
 import { getPetSpritesheetUrl, listLocalPets, setPetAlwaysOnTop } from '@/services/desktopPet'
 import { createPetApp, PET_ACTIONS } from '@/modules/desktopPet/engine'
 import type { PetApp } from '@/modules/desktopPet/engine'
@@ -41,9 +45,15 @@ const SIM_TOKEN_INTERVAL_MS = 70
 // 移出宠物后对话气泡停留时间再淡出（ms）。
 const SIM_LINGER_MS = 600
 
-// 菜单位置估算（与 CSS min-width 对齐）。
-const MENU_WIDTH = 140
+// 菜单位置估算（与 CSS min-width 对齐；含养成状态条与喂食区，比纯按钮菜单更宽）。
+const MENU_WIDTH = 176
 const MENU_GAP = 12
+
+// --- 宠物上方日程浮层 ------------------------------------------------------
+// 浮层宽度估算（与 PetView.css .pet-schedule 宽度对齐），用于水平居中定位。
+const SCHEDULE_WIDTH = 244
+// 浮层跟随宠物位置的轮询间隔（宠物会走动，浮层需跟随）。
+const SCHEDULE_FOLLOW_MS = 500
 
 // --- 长 idle 瞌睡 --------------------------------------------------------
 // 超过该时长无交互（无悬停 / 点击 / 真实通知）即进入「瞌睡」。
@@ -68,6 +78,9 @@ export function usePetView() {
   const petSettings = usePetSettingsStore()
   const desktopPetStore = useDesktopPetStore()
   const windowManagerStore = useWindowManagerStore()
+  const petCare = usePetCareStore()
+  // 待办日程 store：宠物上方日程浮层 + 到点提醒气泡（localStorage 跨窗口同步）。
+  const todoStore = useTodoScheduleStore()
   // useI18n：宠物窗口自身的 locale 与其 petSettings.locale（启动时从 localStorage 读取）保持一致。
   // 多窗口（管理 / 宠物）各自独立 JS 上下文，跨窗口运行时同步需 storage 事件，超出本任务范围。
   const { t: i18nT, locale: i18nLocale } = useI18n()
@@ -103,6 +116,107 @@ export function usePetView() {
   const actions = PET_ACTIONS
 
   const activePetId = computed(() => petSettings.activeId)
+
+  // --- 养成（喂养 / 亲密度） --------------------------------------------
+  // 当前宠物的养成状态（响应式：喂食/衰减后菜单状态条实时刷新）。
+  const activeCare = computed(() => {
+    const id = activePetId.value
+    return id ? petCare.snapshot(id) : null
+  })
+  // 亲密度等级文案（ui.care.level*）。
+  const bondLevelTitle = computed(() => {
+    if (!activeCare.value) return ''
+    return i18nT(bondLevelKey(activeCare.value.bond))
+  })
+
+  // --- 宠物上方日程浮层（待办日历联动） --------------------------------------
+  // 展示范围由 todoSchedule.settings.petScheduleMode 控制（近七日 / 近半月 / 关闭），
+  // 在管理窗口「待办日历」页或右键菜单里切换，经 localStorage 跨窗口同步实时生效。
+  const scheduleMode = computed(() => todoStore.settings.petScheduleMode)
+
+  /** 浮层展示的日程（范围 × 上限条数，避免遮挡宠物）。 */
+  const scheduleTasks = computed(() => {
+    const mode = scheduleMode.value
+    if (mode === 'off') return []
+    const days = mode === '7d' ? 7 : 15
+    return todoStore.upcomingPending(days).slice(0, 8)
+  })
+
+  /** 浮层标题（ui.todo.petSchedule.*）。 */
+  const scheduleTitle = computed(() =>
+    scheduleMode.value === 'off' ? '' : i18nT(`ui.todo.petSchedule.${scheduleMode.value}`)
+  )
+
+  /** 浮层位置（跟随宠物上方，放不下时翻转到下方）。 */
+  const scheduleX = ref(0)
+  const scheduleY = ref(0)
+  /** 浮层 DOM 引用（测量实际高度用于垂直定位）。 */
+  const scheduleEl = ref<HTMLElement | null>(null)
+  let schedulePanelHeight = 0
+
+  let scheduleTimer: ReturnType<typeof setInterval> | null = null
+
+  /** 依据宠物包围盒计算浮层位置：水平居中于宠物，垂直贴宠物头顶（余量不足翻到脚下）。 */
+  function updateSchedulePosition(): void {
+    const app = petApp.value
+    if (!app) return
+    if (scheduleEl.value) {
+      schedulePanelHeight = scheduleEl.value.offsetHeight || schedulePanelHeight
+    }
+    const b = app.getPetBounds()
+    const centerX = (b.minX + b.maxX) * 0.5
+    scheduleX.value = Math.max(
+      8,
+      Math.min(window.innerWidth - SCHEDULE_WIDTH - 8, centerX - SCHEDULE_WIDTH * 0.5)
+    )
+    const aboveY = b.minY - schedulePanelHeight - 10
+    if (aboveY >= 8) {
+      scheduleY.value = aboveY
+    } else {
+      // 头顶放不下：翻转到宠物下方（与 ChatBubble 翻转策略一致）。
+      scheduleY.value = Math.min(window.innerHeight - schedulePanelHeight - 8, b.maxY + 10)
+    }
+  }
+
+  function startScheduleFollow(): void {
+    if (scheduleTimer) return
+    updateSchedulePosition()
+    scheduleTimer = setInterval(updateSchedulePosition, SCHEDULE_FOLLOW_MS)
+  }
+
+  function stopScheduleFollow(): void {
+    if (scheduleTimer) {
+      clearInterval(scheduleTimer)
+      scheduleTimer = null
+    }
+  }
+
+  /** 右键菜单：循环切换日程展示范围（关闭 → 近七日 → 近半月）。 */
+  function cyclePetScheduleMode(): void {
+    const order: PetScheduleMode[] = ['off', '7d', '15d']
+    const idx = order.indexOf(todoStore.settings.petScheduleMode)
+    const next = order[(idx + 1) % order.length] ?? 'off'
+    todoStore.setPetScheduleMode(next)
+  }
+
+  /** 右键菜单项文案：展示当前范围。 */
+  const scheduleMenuLabel = computed(() => {
+    const mode = scheduleMode.value
+    return `${i18nT('ui.todo.menuSchedule')}：${i18nT(`ui.todo.petSchedule.${mode}`)}`
+  })
+
+  // 到点提醒 → 宠物气泡（真实 WorkBuddy 通知进行中时让位）。
+  watch(
+    () => todoStore.activeReminders.length,
+    (count, prev) => {
+      if (count > (prev ?? 0)) {
+        const latest = todoStore.activeReminders[count - 1]
+        if (latest) {
+          void nextTick(() => showCareBubble(`⏰ ${latest.title} (${latest.time})`))
+        }
+      }
+    }
+  )
 
   // --- 点击 / 拖拽状态机 ------------------------------------------------
   const pointerArmed = ref(false)
@@ -319,6 +433,67 @@ export function usePetView() {
     }, TOKEN_BUBBLE_LINGER_MS)
   }
 
+  // --- 喂养 / 亲密度 ------------------------------------------------------
+
+  /**
+   * 显示一段养成反馈气泡（打字机效果，停留后自动淡出）。
+   * 复用 token 气泡的 chatTimer / tokenBubbleTimer；真实 WorkBuddy 通知进行中时让位不打扰。
+   */
+  function showCareBubble(line: string): void {
+    if (workbuddyEvents.isActive.value) return
+    const app = petApp.value
+    if (!app) return
+
+    stopChatTimers()
+    app.showChat()
+
+    const chars = [...line]
+    let i = 0
+    chatTimer = setInterval(() => {
+      if (i >= chars.length) {
+        finishStreaming()
+        return
+      }
+      app.appendChatToken(chars[i])
+      i += 1
+    }, SIM_TOKEN_INTERVAL_MS)
+
+    if (tokenBubbleTimer) {
+      clearTimeout(tokenBubbleTimer)
+    }
+    tokenBubbleTimer = setTimeout(() => {
+      petApp.value?.hideChat()
+      tokenBubbleTimer = null
+    }, TOKEN_BUBBLE_LINGER_MS)
+  }
+
+  /**
+   * 喂食（右键菜单食物按钮）：结算 → 更新养成数据 → 播放动画 + 反馈气泡。
+   * 成功播 jumping（自带粒子 + 心形 emote）；太饱拒绝时播 failed（委屈脸）。
+   */
+  function handleFeed(foodId: string): void {
+    closeAllMenus()
+    const id = activePetId.value
+    if (!id) return
+    const food = PET_FOODS.find((f) => f.id === foodId)
+    if (!food) return
+
+    const result = petCare.feed(id, food.hunger, food.bond)
+    if (result.ok) {
+      petApp.value?.playAction('jumping')
+      showCareBubble(
+        i18nT('ui.care.feedResult', {
+          food: `${food.icon}${i18nT(food.labelKey)}`,
+          hunger: food.hunger,
+          bond: food.bond
+        })
+      )
+    } else {
+      petApp.value?.playAction('failed')
+      showCareBubble(i18nT('ui.care.tooFull'))
+    }
+  }
+
   // --- 菜单 --------------------------------------------------------------
 
   /**
@@ -367,7 +542,8 @@ export function usePetView() {
     const app = petApp.value
     if (!app) return
     const bounds = app.getPetBounds()
-    const pos = computeMenuPosition(bounds, window.innerWidth, window.innerHeight, 90)
+    // 菜单高度估算：养成状态条 + 3 个食物项 + 原有 5 项。
+    const pos = computeMenuPosition(bounds, window.innerWidth, window.innerHeight, 340)
     contextMenuX.value = pos.x
     contextMenuY.value = pos.y
     contextMenuVisible.value = true
@@ -484,8 +660,10 @@ export function usePetView() {
     if (!app) return
     const hit = app.hitTest(event.clientX, event.clientY)
     if (hit) {
-      // 左键单击命中宠物：仅显示今日 token 用量气泡（不再弹动画菜单）。
-      // 动画菜单改为仅右键菜单可访问。
+      // 左键单击命中宠物：顺手抚摸一次（静默 +1 亲密度，带冷却，数据在右键菜单状态条可见），
+      // 并显示今日 token 用量气泡（不再弹动画菜单，动画菜单仅右键菜单可访问）。
+      const petId = activePetId.value
+      if (petId) petCare.stroke(petId)
       void showTokenUsage()
     } else {
       closeAllMenus()
@@ -761,6 +939,9 @@ export function usePetView() {
     startClickThroughLoop()
     startIdleChecker()
     startTokenAutoTimer()
+    // 待办日程：提醒结算定时器 + 浮层跟随宠物。
+    todoStore.startReminderTicker()
+    startScheduleFollow()
     lastInteractionAt = Date.now()
   })
 
@@ -798,6 +979,7 @@ export function usePetView() {
     stopClickThroughLoop()
     stopIdleChecker()
     stopTokenAutoTimer()
+    stopScheduleFollow()
     stopChatTimers()
     desktopPetStore.stopPetSwitchListener()
     void setIgnoreCursorEvents(false)
@@ -819,6 +1001,9 @@ export function usePetView() {
     actionMenuY,
     actions,
     activePetId,
+    activeCare,
+    bondLevelTitle,
+    handleFeed,
     handlePointerDown,
     handleContextMenu,
     handleAction,
@@ -828,6 +1013,14 @@ export function usePetView() {
     handleOpenSettings,
     handleResetToCenter,
     handleToggleMovementMode,
+    cyclePetScheduleMode,
+    scheduleMenuLabel,
+    scheduleTasks,
+    scheduleTitle,
+    scheduleX,
+    scheduleY,
+    scheduleEl,
+    todoStore,
     closeAllMenus
   }
 }

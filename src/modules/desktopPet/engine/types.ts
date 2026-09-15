@@ -23,6 +23,11 @@ export interface PetConfig {
   scale: number
   walkSpeed: number
   idleDurationRange: [minMs: number, maxMs: number]
+  /**
+   * 走步概率（0-1）：idle 到点后仅以该概率起身走动，其余继续停留。
+   * 缺省 1（每次必走，保持旧行为）。
+   */
+  walkChance?: number
   reactionDuration: number
   particleCount: number
 }

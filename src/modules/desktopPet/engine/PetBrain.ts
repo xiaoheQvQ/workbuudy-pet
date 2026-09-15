@@ -10,6 +10,8 @@ const EPSILON = 0.001
 export class PetBrain {
   private readonly config: PetConfig
   private readonly rng: RandomSource
+  /** 走步概率闸门：idle 到点后仅以该概率起身走动（缺省 1 = 每次必走）。 */
+  private readonly walkChance: number
 
   private petBounds: PetBounds
   private position: Point
@@ -26,6 +28,7 @@ export class PetBrain {
     this.config = config
     this.petBounds = petBounds
     this.rng = rng
+    this.walkChance = config.walkChance ?? 1
     const { minX, maxX, minY, maxY } = petBounds.aabb
     this.position = {
       x: (minX + maxX) * 0.5,
@@ -63,10 +66,14 @@ export class PetBrain {
         if (this.stateElapsedMs + EPSILON >= this.stateDurationMs) {
           // 固定模式：不进入 walk，重新 idle（停在原地）。大脑照常 tick，
           // idle / 环境动画 / 跨屏迁移器照常工作，仅禁用走步。
-          if (this.fixed) {
-            this.enterIdle()
-          } else {
+          // 走步概率闸门：idle 到点后仅以 walkChance 概率起身走动，其余继续停留，
+          // 降低漫游频率。walkChance >= 1 时不消耗 rng（保持旧确定性序列的测试兼容）。
+          const shouldWalk =
+            !this.fixed && (this.walkChance >= 1 || this.rng() <= this.walkChance)
+          if (shouldWalk) {
             this.enterWalk()
+          } else {
+            this.enterIdle()
           }
         }
 

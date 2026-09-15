@@ -22,6 +22,7 @@ windowManagerStore.initWindowContext()
 const theme = computed<GlobalTheme | null>(() => null)
 
 let unlistenOpenSettings: (() => void) | null = null
+let unlistenOpenTodo: (() => void) | null = null
 
 onMounted(async () => {
   if (windowManagerStore.isMainWindow) {
@@ -47,6 +48,17 @@ onMounted(async () => {
       }
     })
 
+    // 监听桌面固定待办窗口"打开日历"事件 → 主窗口聚焦（标签页切换由 PetManager 处理）。
+    unlistenOpenTodo = await listen('desktop-pet:open-todo', async () => {
+      const win = getCurrentWindow()
+      try {
+        await win.show()
+        await win.setFocus()
+      } catch (e) {
+        console.error('[App] focus main window (todo) failed:', e)
+      }
+    })
+
     // main 窗口以 visible:false 创建（tauri.conf.json），避免 webview 加载期间的原生白底闪烁。
     // Vue 挂载完成（DOM 已有内容）后立即 show，用户看到的是完整 UI 而非白色空窗。
     // 注意：不能用 requestAnimationFrame —— 隐藏窗口的 webview 会被浏览器节流，rAF 不触发，
@@ -58,6 +70,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unlistenOpenSettings?.()
+  unlistenOpenTodo?.()
 })
 </script>
 

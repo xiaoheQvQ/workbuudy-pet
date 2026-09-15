@@ -20,6 +20,13 @@ if (/^\/pet(?:\/|$|\?)/.test(location.pathname)) {
     .catch(() => {})
 }
 
+// todo-board 窗口（桌面固定待办）首帧就绪通知：后端 show 前等待本事件消除白底闪现。
+if (/^\/todo-board(?:\/|$|\?)/.test(location.pathname)) {
+  import('@tauri-apps/api/event')
+    .then(({ emit }) => emit('todo-board-ready'))
+    .catch(() => {})
+}
+
 // vue-i18n：消息采用扁平点号 key，故开启 flatJson 以正确解析
 // （如 notif.tool.start 与 notif.tool.start.file 这类同前缀叶节点）。
 // 运行时语言切换由集成代理在 PetManager 里 watch petSettings.locale 实现；

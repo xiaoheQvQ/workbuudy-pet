@@ -7,6 +7,7 @@
 
 pub mod desktop_pet;
 pub mod pet_market;
+pub mod todo_board;
 
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};

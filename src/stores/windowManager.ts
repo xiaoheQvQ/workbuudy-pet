@@ -12,7 +12,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
-export type WindowType = 'main' | 'pet'
+export type WindowType = 'main' | 'pet' | 'todo-board'
 
 export const useWindowManagerStore = defineStore('windowManager', () => {
   const windowType = ref<WindowType>('main')
@@ -22,7 +22,8 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
   function initWindowContext(): void {
     try {
       const label = getCurrentWindow().label
-      windowType.value = label === 'pet' ? 'pet' : 'main'
+      windowType.value =
+        label === 'pet' ? 'pet' : label === 'todo-board' ? 'todo-board' : 'main'
     } catch {
       windowType.value = 'main'
     }
@@ -31,12 +32,14 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
 
   const isPetWindow = computed(() => windowType.value === 'pet')
   const isMainWindow = computed(() => windowType.value === 'main')
+  const isTodoBoardWindow = computed(() => windowType.value === 'todo-board')
 
   return {
     windowType,
     initialized,
     initWindowContext,
     isPetWindow,
-    isMainWindow
+    isMainWindow,
+    isTodoBoardWindow
   }
 })

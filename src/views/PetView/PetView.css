@@ -85,3 +85,128 @@
   background: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
 }
+
+/* --- 养成（喂养 / 亲密度）---------------------------------------------- */
+
+.pet-menu__divider {
+  height: 1px;
+  margin: 4px 8px;
+  background: rgba(148, 163, 184, 0.25);
+}
+
+.pet-menu__care {
+  padding: 6px 8px 2px;
+}
+
+.pet-care__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.pet-care__label {
+  flex: none;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.pet-care__bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.pet-care__bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: #4ade80;
+  transition: width 0.3s ease;
+}
+
+/* 饿肚子：饱食度条标红。 */
+.pet-care__bar--low i {
+  background: #f87171;
+}
+
+/* 亲密度条：粉红色。 */
+.pet-care__bar--bond i {
+  background: #f472b6;
+}
+
+.pet-care__level {
+  flex: none;
+  font-size: 10px;
+  color: #f9a8d4;
+}
+
+.pet-menu__item--food {
+  padding: 5px 12px;
+}
+
+/* --- 宠物上方日程浮层 ----------------------------------------------------- */
+/* 纯展示浮层：窗口默认整窗穿透，浮层同样不接收鼠标事件，跟随宠物上方移动。 */
+
+.pet-schedule {
+  position: fixed;
+  z-index: 900;
+  width: 244px;
+  max-height: 220px;
+  overflow: hidden;
+  padding: 8px 10px;
+  background: rgba(30, 41, 59, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pet-schedule__head {
+  font-size: 11px;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-bottom: 2px;
+}
+
+.pet-schedule__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e2e8f0;
+}
+
+.pet-schedule__item--today .pet-schedule__title {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.pet-schedule__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.pet-schedule__date {
+  flex: none;
+  font-size: 10px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.pet-schedule__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

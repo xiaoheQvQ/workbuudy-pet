@@ -8,7 +8,11 @@ import type { PetConfig } from './types'
 export const defaultPetConfig: PetConfig = {
   scale: 0.75,
   walkSpeed: 76,
-  idleDurationRange: [6000, 9000],
+  // 漫游频率：平均约 15 分钟走动一次（idle 停留 12-18 分钟，walkChance=1 到点必走）。
+  // idle 窗口远大于环境池休息时长（2.6-5.2s），停泊的宠物可可靠进入环境状态
+  // （waving/jumping/failed/…）。
+  idleDurationRange: [12 * 60 * 1000, 18 * 60 * 1000],
+  walkChance: 1,
   reactionDuration: 700,
   particleCount: 18,
 }

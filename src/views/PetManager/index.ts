@@ -7,7 +7,7 @@
  *   - 缩放：双向绑定 petSettings.scale（PetView 监听重建 PetApp）。
  *   - WorkBuddy 联动：`n-switch` 绑定 workbuddyLinked，切换调 `link_workbuddy`，失败 toast，成功提示新建会话。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
@@ -15,6 +15,7 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { usePetSettingsStore } from '@/stores/petSettings'
 import { useDesktopPetStore } from '@/stores/desktopPet'
 import { usePetMarketStore } from '@/stores/petMarket'
+import { useTodoScheduleStore } from '@/stores/todoSchedule'
 import { toLocalAssetUrl } from '@/services/desktopPet'
 import { useAppUpdate } from '@/composables/useAppUpdate'
 import type { AppLocale } from '@/locales'
@@ -29,20 +30,27 @@ interface Option {
   label: string
 }
 
+/** 桌面固定待办窗口「打开日历」事件的反注册句柄。 */
+let unlistenOpenTodo: (() => void) | null = null
+
 export function usePetManager() {
   const message = useMessage()
   const { t, locale } = useI18n()
   const petSettings = usePetSettingsStore()
   const desktopPetStore = useDesktopPetStore()
   const petMarketStore = usePetMarketStore()
+  const todoStore = useTodoScheduleStore()
   const { updateInfo, checkForAppUpdate, downloadAndInstallUpdate, installing } = useAppUpdate()
 
   // --- 设置区折叠状态 -----------------------------------------------------
   // 默认收起：设置区常驻会挤压宠物列表垂直空间，收起后宠物列表获得最大高度。
   const settingsOpen = ref(false)
 
-  // --- 标签页（我的宠物 / 在线市场）----------------------------------------
-  const activeTab = ref<'local' | 'market'>('local')
+  // --- 待办日历（近 7 日待办数，标签页角标用） --------------------------------
+  const upcoming7Count = computed(() => todoStore.upcoming7Count)
+
+  // --- 标签页（我的宠物 / 在线市场 / 待办日历）-------------------------------
+  const activeTab = ref<'local' | 'market' | 'todo'>('local')
 
   // --- 详情弹窗状态 ------------------------------------------------------
   const detailVisible = ref(false)
@@ -350,6 +358,9 @@ export function usePetManager() {
     // 启动时按持久化语言同步 i18n（main.ts 已尝试，这里确保管理窗口内一致）。
     locale.value = petSettings.locale
 
+    // 主窗口运行提醒结算定时器（提醒横幅在管理窗口也会展示）。
+    todoStore.startReminderTicker()
+
     // 拉取 WorkBuddy 联动真实状态初始化开关。
     try {
       workbuddyLinked.value = await invoke<boolean>('get_workbuddy_link_status')
@@ -371,6 +382,21 @@ export function usePetManager() {
 
     // 静默检测应用更新（失败不影响主流程；有新版本时顶部显示下载按钮）。
     void checkForAppUpdate()
+
+    // 桌面固定待办窗口点「打开日历」→ 切到待办日历标签页（窗口聚焦由 App.vue 处理）。
+    try {
+      const { listen } = await import('@tauri-apps/api/event')
+      unlistenOpenTodo = await listen('desktop-pet:open-todo', () => {
+        activeTab.value = 'todo'
+      })
+    } catch (e) {
+      console.error('[PetManager] listen open-todo failed:', e)
+    }
+  })
+
+  onUnmounted(() => {
+    unlistenOpenTodo?.()
+    unlistenOpenTodo = null
   })
 
   // petSettings.locale 被外部改写（如 PetView storage 事件）时同步 i18n。
@@ -399,6 +425,7 @@ export function usePetManager() {
     settingsOpen,
     // tabs
     activeTab,
+    upcoming7Count,
     // market
     petMarketStore,
     // app update

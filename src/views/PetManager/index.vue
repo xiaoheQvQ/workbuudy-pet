@@ -7,6 +7,7 @@ import { usePetManager } from './index'
 import PetThumb from './PetThumb/PetThumb.vue'
 import PetDetailModal from './PetDetailModal/PetDetailModal.vue'
 import MarketPanel from './MarketPanel/MarketPanel.vue'
+import TodoPanel from './TodoPanel/TodoPanel.vue'
 
 const {
   t,
@@ -19,6 +20,7 @@ const {
   scaleStep,
   settingsOpen,
   activeTab,
+  upcoming7Count,
   petMarketStore,
   updateInfo,
   installing,
@@ -230,6 +232,15 @@ const {
             class="pm-tab__count"
           >{{ petMarketStore.total }}</span>
         </button>
+        <button
+          type="button"
+          class="pm-tab"
+          :class="{ 'pm-tab--active': activeTab === 'todo' }"
+          @click="activeTab = 'todo'"
+        >
+          {{ t('ui.todo.tab') }}
+          <span class="pm-tab__count">{{ upcoming7Count }}</span>
+        </button>
       </div>
 
       <!-- 我的宠物 -->
@@ -301,10 +312,13 @@ const {
 
       <!-- 在线市场（petdex.dev） -->
       <MarketPanel
-        v-else
+        v-else-if="activeTab === 'market'"
         @open="openMarketDetail"
         @install="handleInstallPet"
       />
+
+      <!-- 待办日历 -->
+      <TodoPanel v-else />
     </section>
 
     <!-- 详情弹窗 -->
